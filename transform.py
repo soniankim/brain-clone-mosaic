@@ -495,7 +495,7 @@ def simulate_sensitivity_assay(mosaic_input):
         mean_AO = sum(AOs) / len(AOs)
         row[23] = math.sqrt(mean_AO)
 
-        if len(AMs) > 1:
+        if len(AMs) > 1 and len(set(AMs)) > 1:
             mean_AMs = np.mean(AMs)
             #print(mean_AMs)
             ci_raw = stats.norm.interval(0.95, loc=mean_AMs, scale=np.std(AMs)/math.sqrt(len(AMs)))
@@ -512,7 +512,7 @@ def simulate_sensitivity_assay(mosaic_input):
         mean_AX = sum(AXs) / len(AXs)
         row[32] = math.sqrt(mean_AX)
 
-        if len(AVs) > 1:
+        if len(AVs) > 1 and len(set(AVs)) > 1:
             mean_AVs = np.mean(AVs)
             ci = stats.norm.interval(0.95,loc=mean_AVs,scale=np.std(AVs)/math.sqrt(len(AVs)))
             if not np.isnan(ci[1]):
@@ -535,7 +535,7 @@ def simulate_sensitivity_assay(mosaic_input):
 
         ATs = [float(sensitivity_AT[pos]) for pos in range(len(sensitivity_AT)) if all([sensitivity_BD[pos] == row[37], sensitivity_B[pos] == row[1]])]
         
-        if len(ATs) > 1:
+        if len(ATs) > 1 and len(set(ATs)) > 1:
             mean_ATs = np.mean(ATs)
             ci_average = stats.norm.interval(0.95, loc=mean_ATs, scale=np.std(ATs)/math.sqrt(len(ATs)))
             if not np.isnan(ci_average[1]):
@@ -569,7 +569,7 @@ def simulate_sensitivity_assay(mosaic_input):
             
             row[42] = row[40] / row[20] * 100
 
-        if len(AKs) > 1:
+        if len(AKs) > 1 and len(set(AKs)) > 1:
             mean_AKs = np.mean(AKs)
             #print(meanAKs)
             ci_raw_average_aaf = stats.norm.interval(0.95, loc=mean_AKs, scale=np.std(AKs)/math.sqrt(len(AKs)))
