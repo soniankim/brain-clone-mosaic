@@ -473,7 +473,7 @@ def simulate_sensitivity_assay(mosaic_input):
 
     for row in sensitivity_analysis_tab:
         #print("row:")
-        #print(row)
+        print(row)
         #print("row[1]:")
         #print(row[1])
         #print("row[37]: ")
