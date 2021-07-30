@@ -530,8 +530,6 @@ def simulate_sensitivity_assay(mosaic_input):
         except ValueError:
             row.append("")
 
-        print(row)
-
         aafs = [float(q20_allele_tab_N[pos]) for pos in range(len(q20_allele_tab_N)) if all([q20_allele_tab_D[pos] == row[1], q20_allele_tab_R[pos] == "Corrected", q20_allele_tab_S[pos] == row[37]])]
         row[34] = sum(aafs) / len(aafs)
 
@@ -539,6 +537,8 @@ def simulate_sensitivity_assay(mosaic_input):
         var_ATs = np.var(ATs)
         ci_average = stats.norm.interval(0.95, loc=row[34], scale=math.sqrt(var_ATs/math.sqrt(len(ATs))))
 
+        print(row)
+        
         if not np.isnan(ci_average[1]):
             row[35] = ci_average[1] - row[34]
         else:
