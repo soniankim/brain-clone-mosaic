@@ -473,7 +473,7 @@ def simulate_sensitivity_assay(mosaic_input):
 
     for row in sensitivity_analysis_tab:
         #print("row:")
-        print(row)
+        #print(row)
         #print("row[1]:")
         #print(row[1])
         #print("row[37]: ")
@@ -529,7 +529,8 @@ def simulate_sensitivity_assay(mosaic_input):
             row.append(sum(raw_aafs) / len(raw_aafs)) # raw average AAF
         except ValueError:
             row.append("")
-            
+
+        print(row)
 
         aafs = [float(q20_allele_tab_N[pos]) for pos in range(len(q20_allele_tab_N)) if all([q20_allele_tab_D[pos] == row[1], q20_allele_tab_R[pos] == "Corrected", q20_allele_tab_S[pos] == row[37]])]
         row[34] = sum(aafs) / len(aafs)
