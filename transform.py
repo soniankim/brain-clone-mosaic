@@ -537,6 +537,9 @@ def simulate_sensitivity_assay(mosaic_input):
         var_ATs = np.var(ATs)
         ci_average = stats.norm.interval(0.95, loc=row[34], scale=math.sqrt(var_ATs/math.sqrt(len(ATs))))
 
+        print(ATs)
+        print(var_ATs)
+        print(row[34])
         print(row)
         
         if not np.isnan(ci_average[1]):
