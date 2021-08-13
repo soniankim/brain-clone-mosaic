@@ -372,11 +372,13 @@ def simulate_sensitivity_assay(mosaic_input):
             if row2 == entry[2]:
                 check1.append(pos)
 
+        # match on UniqueID (single amplicon)
         check2 = []
         for pos, row2 in enumerate(q20_nts_tab_A):
             if row2 == entry[2]:
                 check2.append(pos)
 
+        # match on Chip-MutationID (all amplicons)
         check3 = []
         for pos, row2 in enumerate(q20_nts_tab_D):
             if row2 == entry[1]:
@@ -430,25 +432,47 @@ def simulate_sensitivity_assay(mosaic_input):
 
         if len(ns_unc) > 0:
             mean_ns_unc = sum(ns_unc) / len(ns_unc)
-            entry[22] = sum(pow(x-mean_ns_unc,2) for x in ns_unc) / (len(ns_unc) - 1)
+            #entry[22] = sum(pow(x-mean_ns_unc,2) for x in ns_unc) / (len(ns_unc) - 1)
+            entry[22] = np.var(ns_unc)
+
 
         if len(ns_c) > 0:
             mean_ns_c = sum(ns_c) / len(ns_c)
-            entry[31] = sum(pow(x-mean_ns_c,2) for x in ns_c) / (len(ns_c) - 1)
+            #entry[31] = sum(pow(x-mean_ns_c,2) for x in ns_c) / (len(ns_c) - 1)
+            entry[31] = np.var(ns_c)
 
         # this is first appended to the end of the row due to indexing disgustingness, fixed below
 
-        # aveage background error
+        # average background error
         if len(vals_c_error) > 0:
-            entry.append(sum(vals_c_error) / len(vals_c_error))
+            entry[32] = np.stdev(vals_c_error)
+            mean_vals_error = sum(vals_c_error) / len(vals_c_error))
+            ci_raw = stats.norm.interval(0.95, loc=mean_vals_error, scale=entry[32]/math.sqrt(len(vals_c_error)))
+            if not np.isnan(ci_raw[1]):
+                entry[33] = ci_raw[1] - mean_vals_error
+            else:
+                entry[33] = ""
+            entry.append(mean_vals_error)
         else:
-            entry.append("")
+            entry[32] = ""
+            entry[33] = ""
+            #entry.append("")
 
         # raw average background error
+        mean_vals_unc_error = ""
         if len(vals_unc_error) > 0:
-            entry.append(sum(vals_unc_error) / len(vals_unc_error))
+            entry[23] = np.stdev(vals_unc_error)
+            mean_vals_unc_error = sum(vals_unc_error) / len(vals_unc_error))
+            ci_raw = stats.norm.interval(0.95, loc=mean_vals_unc_error, scale=entry[23]/math.sqrt(len(vals_unc_error)))
+            if not np.isnan(ci_raw[1]):
+                entry[24] = ci_raw[1] - mean_vals_unc_error
+            else:
+                entry[24] = ""
+            entry.append(mean_vals_unc_error)
         else:
-            entry.append("")
+            entry[23] = ""
+            entry[23] = ""
+            #entry.append("")
 
         sensitivity_analysis_tab.append(entry)
     
@@ -484,43 +508,45 @@ def simulate_sensitivity_assay(mosaic_input):
         #print(sensitivity_BD)
         #print("sensitivity_AO:")
         #print(sensitivity_AO)
-        AOs = [float(sensitivity_AO[pos]) for pos in range(len(sensitivity_AO)) if all([sensitivity_BD[pos] == row[37], sensitivity_B[pos] == row[1]])]
+
+        #AOs = [float(sensitivity_AO[pos]) for pos in range(len(sensitivity_AO)) if all([sensitivity_BD[pos] == row[37], sensitivity_B[pos] == row[1]])]
+        #mean_AO = sum(AOs) / len(AOs)
+        #row[23] = math.sqrt(mean_AO)
        
         try:
             AKs = [float(sensitivity_AK[pos]) for pos in range(len(sensitivity_AK)) if all([sensitivity_BD[pos] == row[37], sensitivity_B[pos] == row[1]])]
         except ValueError:
             AKs = []
  
-        AMs = [float(sensitivity_AM[pos]) for pos in range(len(sensitivity_AM)) if all([sensitivity_BD[pos] == row[37], sensitivity_B[pos] == row[1]])]
-        mean_AO = sum(AOs) / len(AOs)
-        row[23] = math.sqrt(mean_AO)
+ #       AMs = [float(sensitivity_AM[pos]) for pos in range(len(sensitivity_AM)) if all([sensitivity_BD[pos] == row[37], sensitivity_B[pos] == row[1]])]
+        
 
-        if len(AMs) > 1 and len(set(AMs)) > 1:
-            mean_AMs = np.mean(AMs)
-            #print(mean_AMs)
-            ci_raw = stats.norm.interval(0.95, loc=mean_AMs, scale=np.std(AMs)/math.sqrt(len(AMs)))
-            if not np.isnan(ci_raw[1]):
-                row[24] = ci_raw[1] - mean_AMs
-            else:
-                row[24] = ""
-        else:
-            row[24] = ""
+#        if len(AMs) > 1 and len(set(AMs)) > 1:
+#            mean_AMs = np.mean(AMs)
+#            #print(mean_AMs)
+#            ci_raw = stats.norm.interval(0.95, loc=mean_AMs, scale=np.std(AMs)/math.sqrt(len(AMs)))
+#            if not np.isnan(ci_raw[1]):
+#                row[24] = ci_raw[1] - mean_AMs
+#            else:
+#                row[24] = ""
+#        else:
+#            row[24] = ""
 
-        AVs = [float(sensitivity_AV[pos]) for pos in range(len(sensitivity_AV)) if all([sensitivity_BD[pos] == row[37], sensitivity_B[pos] == row[1]])]
+#        AVs = [float(sensitivity_AV[pos]) for pos in range(len(sensitivity_AV)) if all([sensitivity_BD[pos] == row[37], sensitivity_B[pos] == row[1]])]
 
-        AXs = [float(sensitivity_AX[pos]) for pos in range(len(sensitivity_AX)) if all([sensitivity_BD[pos] == row[37], sensitivity_B[pos] == row[1]])]
-        mean_AX = sum(AXs) / len(AXs)
-        row[32] = math.sqrt(mean_AX)
+#        AXs = [float(sensitivity_AX[pos]) for pos in range(len(sensitivity_AX)) if all([sensitivity_BD[pos] == row[37], sensitivity_B[pos] == row[1]])]
+#        mean_AX = sum(AXs) / len(AXs)
+#        row[32] = math.sqrt(mean_AX)
 
-        if len(AVs) > 1 and len(set(AVs)) > 1:
-            mean_AVs = np.mean(AVs)
-            ci = stats.norm.interval(0.95,loc=mean_AVs,scale=np.std(AVs)/math.sqrt(len(AVs)))
-            if not np.isnan(ci[1]):
-                row[33] = ci[1] - mean_AVs
-            else:
-                row[33] = ""
-        else:
-            row[33] = ""
+#        if len(AVs) > 1 and len(set(AVs)) > 1:
+#            mean_AVs = np.mean(AVs)
+#            ci = stats.norm.interval(0.95,loc=mean_AVs,scale=np.std(AVs)/math.sqrt(len(AVs)))
+#            if not np.isnan(ci[1]):
+#                row[33] = ci[1] - mean_AVs
+#            else:
+#                row[33] = ""
+#        else:
+#            row[33] = ""
 
         # because it might be the case that there isn't an associated raw AAF to pull due to thresholding, we need to check for any empty values.
         # if we encounter an empty value, throw out the calculation and use a blank instead
