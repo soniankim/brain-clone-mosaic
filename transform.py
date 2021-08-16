@@ -445,7 +445,7 @@ def simulate_sensitivity_assay(mosaic_input):
 
         # average background error
         if len(vals_c_error) > 0:
-            entry[32] = np.stdev(vals_c_error)
+            entry[32] = np.std(vals_c_error)
             mean_vals_error = sum(vals_c_error) / len(vals_c_error))
             ci_raw = stats.norm.interval(0.95, loc=mean_vals_error, scale=entry[32]/math.sqrt(len(vals_c_error)))
             if not np.isnan(ci_raw[1]):
