@@ -424,7 +424,8 @@ def simulate_sensitivity_assay(mosaic_input):
 
         if len(vals_unc) > 0:
             entry[20] = sum(vals_unc) / len(vals_unc)
-            entry[21] = math.sqrt(sum(pow(x-entry[20],2) for x in vals_unc) / (len(vals_unc)-1))
+            #entry[21] = math.sqrt(sum(pow(x-entry[20],2) for x in vals_unc) / (len(vals_unc)-1))
+            entry[21] = np.std(vals_unc, ddof=1)
 
         if len(vals_c) > 0:
             entry[29] = sum(vals_c) / len(vals_c)
@@ -433,21 +434,22 @@ def simulate_sensitivity_assay(mosaic_input):
         if len(ns_unc) > 0:
             mean_ns_unc = sum(ns_unc) / len(ns_unc)
             #entry[22] = sum(pow(x-mean_ns_unc,2) for x in ns_unc) / (len(ns_unc) - 1)
-            entry[22] = np.var(ns_unc)
+            entry[22] = np.var(ns_unc, ddof=1)
 
 
         if len(ns_c) > 0:
             mean_ns_c = sum(ns_c) / len(ns_c)
             #entry[31] = sum(pow(x-mean_ns_c,2) for x in ns_c) / (len(ns_c) - 1)
-            entry[31] = np.var(ns_c)
+            entry[31] = np.var(ns_c, ddof=1)
 
         # this is first appended to the end of the row due to indexing disgustingness, fixed below
 
         # average background error
         if len(vals_c_error) > 0:
-            entry[32] = np.std(vals_c_error)
-            mean_vals_error = sum(vals_c_error) / len(vals_c_error)
-            ci_raw = stats.norm.interval(0.95, loc=mean_vals_error, scale=entry[32]/math.sqrt(len(vals_c_error)))
+            entry[32] = np.std(vals_c_error, ddof=1)
+            mean_vals_error = np.mean(vals_c_error)
+            #ci_raw = stats.norm.interval(0.95, loc=mean_vals_error, scale=entry[32]/math.sqrt(len(vals_c_error)))
+            ci_raw = stats.t.interval(alpha=0.95, loc=mean_vals_error, df=len(vals_c_error)-1, scale=np.sem(vals_c_error))
             if not np.isnan(ci_raw[1]):
                 entry[33] = ci_raw[1] - mean_vals_error
             else:
@@ -461,9 +463,10 @@ def simulate_sensitivity_assay(mosaic_input):
         # raw average background error
         mean_vals_unc_error = ""
         if len(vals_unc_error) > 0:
-            entry[23] = np.std(vals_unc_error)
-            mean_vals_unc_error = sum(vals_unc_error) / len(vals_unc_error)
-            ci_raw = stats.norm.interval(0.95, loc=mean_vals_unc_error, scale=entry[23]/math.sqrt(len(vals_unc_error)))
+            entry[23] = np.std(vals_unc_error, ddof=1)
+            mean_vals_unc_error = np.mean(vals_unc_error)
+            #ci_raw = stats.norm.interval(0.95, loc=mean_vals_unc_error, scale=entry[23]/math.sqrt(len(vals_unc_error)))
+            ci_raw = stats.t.interval(alpha=0.95, loc=mean_vals_unc_error, df=len(vals_unc_error), scale=np.sem(cals_unc_error))
             if not np.isnan(ci_raw[1]):
                 entry[24] = ci_raw[1] - mean_vals_unc_error
             else:
@@ -563,7 +566,8 @@ def simulate_sensitivity_assay(mosaic_input):
         
         if len(ATs) > 1 and len(set(ATs)) > 1:
             mean_ATs = np.mean(ATs)
-            ci_average = stats.norm.interval(0.95, loc=mean_ATs, scale=np.std(ATs)/math.sqrt(len(ATs)))
+            #ci_average = stats.norm.interval(0.95, loc=mean_ATs, scale=np.std(ATs)/math.sqrt(len(ATs)))
+            ci_average = stats.t.interval(alpha=0.95, loc=mean_ATs, df=len(ATs)-1, scale=st.sem(ATs))
             if not np.isnan(ci_average[1]):
                 row[35] = ci_average[1] - mean_ATs
             else:
@@ -598,7 +602,8 @@ def simulate_sensitivity_assay(mosaic_input):
         if len(AKs) > 1 and len(set(AKs)) > 1:
             mean_AKs = np.mean(AKs)
             #print(meanAKs)
-            ci_raw_average_aaf = stats.norm.interval(0.95, loc=mean_AKs, scale=np.std(AKs)/math.sqrt(len(AKs)))
+            #ci_raw_average_aaf = stats.norm.interval(0.95, loc=mean_AKs, scale=np.std(AKs, ddof=1)/math.sqrt(len(AKs)))
+            ci_raw_average_aaf = stats.t.interval(alpha=0.95, loc=mean_AKs, df=len(AKs-1), scale=np.sem(AKs))
             if not np.isnan(ci_raw_average_aaf[1]):
                 row.append(ci_raw_average_aaf[1] - mean_AKs)
             else:
