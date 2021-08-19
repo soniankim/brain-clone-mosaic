@@ -466,7 +466,7 @@ def simulate_sensitivity_assay(mosaic_input):
             entry[23] = np.std(vals_unc_error, ddof=1)
             mean_vals_unc_error = np.mean(vals_unc_error)
             #ci_raw = stats.norm.interval(0.95, loc=mean_vals_unc_error, scale=entry[23]/math.sqrt(len(vals_unc_error)))
-            ci_raw = stats.t.interval(alpha=0.95, loc=mean_vals_unc_error, df=len(vals_unc_error), scale=stats.sem(cals_unc_error))
+            ci_raw = stats.t.interval(alpha=0.95, loc=mean_vals_unc_error, df=len(vals_unc_error), scale=stats.sem(vals_unc_error))
             if not np.isnan(ci_raw[1]):
                 entry[24] = ci_raw[1] - mean_vals_unc_error
             else:
