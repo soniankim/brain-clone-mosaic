@@ -567,7 +567,7 @@ def simulate_sensitivity_assay(mosaic_input):
         if len(ATs) > 1 and len(set(ATs)) > 1:
             mean_ATs = np.mean(ATs)
             #ci_average = stats.norm.interval(0.95, loc=mean_ATs, scale=np.std(ATs)/math.sqrt(len(ATs)))
-            ci_average = stats.t.interval(alpha=0.95, loc=mean_ATs, df=len(ATs)-1, scale=st.sem(ATs))
+            ci_average = stats.t.interval(alpha=0.95, loc=mean_ATs, df=len(ATs)-1, scale=stats.sem(ATs))
             if not np.isnan(ci_average[1]):
                 row[35] = ci_average[1] - mean_ATs
             else:
