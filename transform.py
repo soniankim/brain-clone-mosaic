@@ -603,7 +603,7 @@ def simulate_sensitivity_assay(mosaic_input):
             mean_AKs = np.mean(AKs)
             #print(meanAKs)
             #ci_raw_average_aaf = stats.norm.interval(0.95, loc=mean_AKs, scale=np.std(AKs, ddof=1)/math.sqrt(len(AKs)))
-            ci_raw_average_aaf = stats.t.interval(alpha=0.95, loc=mean_AKs, df=len(AKs-1), scale=stats.sem(AKs))
+            ci_raw_average_aaf = stats.t.interval(alpha=0.95, loc=mean_AKs, df=len(AKs)-1, scale=stats.sem(AKs))
             if not np.isnan(ci_raw_average_aaf[1]):
                 row.append(ci_raw_average_aaf[1] - mean_AKs)
             else:
