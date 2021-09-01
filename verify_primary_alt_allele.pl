@@ -4,28 +4,33 @@ use strict;
 use warnings;
 use Getopt::Long;	# for script arguments for file input passing
 use Pod::Usage;   	# for usage statement
-#use File::Basename; 	# so we can get the file path and name, used in writing output files.
 
 # command line arg handling
-my ($help, $oligo_target_file, $allele_corrected, $allele_uncorrected, $output_dir, $sample_name, $debug);
+my ($help, $oligo_target_file, $allele_corrected, $allele_uncorrected, $corrected_50nt, $uncorrected_50nt, $output_dir, $sample_name, $cutoff, $debug);
 
 GetOptions(
         'help|h'               => \$help,
         'oligo_target_file=s'  => \$oligo_target_file,
         'allele_corrected=s'   => \$allele_corrected,
         'allele_uncorrected=s' => \$allele_uncorrected,
+        'corrected_50nt=s'     => \$corrected_50nt,
+        'uncorrected_50nt=s'   => \$uncorrected_50nt,
         'output_dir=s'         => \$output_dir,
         'sample_name=s'        => \$sample_name,
+        'cutoff=i'             => \$cutoff,
         'debug'                => \$debug
 );
 
-# debug flag is for printing 
+# debug flag is for printing
 $debug = 0 unless ($debug);
 
 # if the user running the script uses the help option or forgets to
 # pass files, print the usage statement
 pod2usage(-verbose =>1) if $help;
-pod2usage("$0: Not enough files provided.\n") unless $oligo_target_file && $allele_corrected && $allele_uncorrected && $output_dir && $sample_name; #&& $corrected_50nt && $uncorrected_50nt; 
+pod2usage("$0: Not enough files provided.\n") unless $oligo_target_file && $allele_corrected && $allele_uncorrected && $output_dir && $sample_name && $corrected_50nt && $uncorrected_50nt;
+
+# unless you gave a cutoff, we'll use 0
+$cutoff = 0 unless $cutoff;
 
 # output directory
 if (-d $output_dir){
@@ -35,35 +40,37 @@ if (-d $output_dir){
 }
 
 # declaring hash and arrays for storing data that was read in
-my (%oligo_target, @allele_corrected, @allele_uncorrected); # @corrected_50nt, @uncorrected_50nt);
+my (%oligo_target, @allele_corrected, @allele_uncorrected, @corrected_50nt, @uncorrected_50nt);
 
 # Tell the user what files we are using
 print "\nRunning verify_primary_alt_allele.pl with the following parameters:\n\n";
 printf("%-25s %-150s\n",   "Oligo design file:",       $oligo_target_file);
 printf("%-25s %-150s\n",   "Allele corrected file:",   $allele_corrected); 
-printf("%-25s %-150s\n",   "Allele uncorrected file:", $allele_uncorrected); 
+printf("%-25s %-150s\n",   "Allele uncorrected file:", $allele_uncorrected);
+printf("%-25s %-150s\n",   "Corrected 50nt file:",     $corrected_50nt);
+printf("%-25s %-150s\n",   "Uncorrected 50nt file:",   $uncorrected_50nt);
 printf("%-25s %-150s\n",   "Output directory:",        $output_dir);
+printf("%-25s %-150s\n",   "Cutoff:",                  $cutoff);
 printf("%-25s %-150s\n\n", "Sample name:",             $sample_name);
 
 # read in files and save to appropriate data structures
 %oligo_target       = read_file($oligo_target_file,  1);
 @allele_corrected   = read_file($allele_corrected,   0);
 @allele_uncorrected = read_file($allele_uncorrected, 0);
-
-# identify basename of files.
-# used for writing output files.
-# commenting out as we're passing a sample name instead now
-#my $allele_corrected_basename = fileparse($allele_corrected, '\.[^\.]*');
-#my $allele_uncorrected_basename = fileparse($allele_uncorrected, '\.[^\.]*');
+@corrected_50nt     = read_file($corrected_50nt,     0);
+@uncorrected_50nt   = read_file($uncorrected_50nt,   0);
 
 # compare each file (allele corrected/uncorrected & 50nt corrected/uncorrected)
 # with the design file.
 my (@allele_corrected_pass, @allele_corrected_fail, @allele_uncorrected_pass, @allele_uncorrected_fail); 
+#TODO not sure if we need these yet
+my (@corrected_50nt_pass, @corrected_50nt_fail, @uncorrected_50nt_pass, @uncorrected_50nt_fail);
 
+#TODO add in 50nt files to pass to this filtering sub
 my ($allele_corrected_pass_ref, $allele_corrected_fail_ref)  = filter(\%oligo_target, \@allele_corrected, $debug);
 @allele_corrected_pass = @$allele_corrected_pass_ref; @allele_corrected_fail = @$allele_corrected_fail_ref;
 
-
+#TODO add in 50nt files to pass to this filtering sub
 my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = filter(\%oligo_target, \@allele_uncorrected, $debug);
 @allele_uncorrected_pass = @$allele_uncorrected_pass_ref; @allele_uncorrected_fail = @$allele_uncorrected_fail_ref;
 
@@ -75,6 +82,7 @@ write_file(\@allele_corrected_pass,   $output_dir, $sample_name, "alleleErrC.pas
 write_file(\@allele_corrected_fail,   $output_dir, $sample_name, "alleleErrC.fail.txt");
 write_file(\@allele_uncorrected_pass, $output_dir, $sample_name, "alleleNoC.pass.txt");
 write_file(\@allele_uncorrected_fail, $output_dir, $sample_name, "alleleNoC.fail.txt");
+#TODO add in output files for 50nt corr/uncorr pass/fail
 
 # read file subroutine to injest input files
 sub read_file{
@@ -140,8 +148,13 @@ sub write_file{
 	close $write_fh;
 }
 
+#TODO: need to add in new function for checking alt allele, and rearrange data if necessary.
 
 
+
+#TODO: need to rewrite this filtering function. Will repurpose the name of this function for filtering for passing read depth.
+#TODO: if corrected/uncorrected read depth total does not match -> throw out amplicon
+#TODO: if amplicon is thrown out, discard 50nt entries (NOT VARIANT)
 
 # Function for comparison of the design file & a given file, which is one of:
 # allele_corrected, allele_uncorrected, corrected_50nt, or uncorrected_50nt.
@@ -240,7 +253,10 @@ verify_primary_alt_allele.pl [options]
   	-oligo_target_file      file containing list of oligos targeting which sites, tab-delimited
   	-allele_corrected       allele file (error corrected), tab-delimited
   	-allele_uncorrected     allele file (not error corrected), tab-delimited
-  	-output_dir             folder to save output files
+        -corrected_50nt         50nt file (error corrected), tab-delimited
+        -uncorrected_50nt       50nt file (not error corrected), tab-delimited
+	-output_dir             folder to save output files
   	-sample_name            sample or chip name, which is used as a prefix in the output filenames
+        -cutoff                 minimum read depth to take (default: 0)
   	-debug                  turn on debugging output
 =cut
