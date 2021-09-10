@@ -21,7 +21,7 @@ GetOptions(
         'debug'                => \$debug
 );
 
-# debug flag is for printing
+# debug flag will print out lots of info so you can verify the script is doing what we expect it to do
 $debug = 0 unless ($debug);
 
 # if the user running the script uses the help option or forgets to
@@ -32,7 +32,7 @@ pod2usage("$0: Not enough files provided.\n") unless $oligo_target_file && $alle
 # unless you gave a cutoff, we'll use 0
 $cutoff = 0 unless $cutoff;
 
-# output directory
+# output directory name must be unique
 if (-d $output_dir){
 	die "Please select a new output directory name. $output_dir already exists.\n";
 }else{
@@ -54,7 +54,7 @@ printf("%-25s %-150s\n",   "Cutoff:",                  $cutoff);
 printf("%-25s %-150s\n\n", "Sample name:",             $sample_name);
 
 # read in files and save to appropriate data structures
-%oligo_target       = read_file($oligo_target_file,  1);
+%oligo_target       = read_file($oligo_target_file,  1); # use hash as this data will be searched, everything else is in arrays.
 @allele_corrected   = read_file($allele_corrected,   0);
 @allele_uncorrected = read_file($allele_uncorrected, 0);
 @corrected_50nt     = read_file($corrected_50nt,     0);
@@ -63,28 +63,34 @@ printf("%-25s %-150s\n\n", "Sample name:",             $sample_name);
 # compare each file (allele corrected/uncorrected & 50nt corrected/uncorrected)
 # with the design file.
 my (@allele_corrected_pass, @allele_corrected_fail, @allele_uncorrected_pass, @allele_uncorrected_fail); 
-#TODO not sure if we need these yet
-my (@corrected_50nt_pass, @corrected_50nt_fail, @uncorrected_50nt_pass, @uncorrected_50nt_fail);
 
-#TODO add in 50nt files to pass to this filtering sub
-my ($allele_corrected_pass_ref, $allele_corrected_fail_ref)  = filter(\%oligo_target, \@allele_corrected, $debug);
+# send allele_corrected file to alternate allele check function
+my ($allele_corrected_pass_ref, $allele_corrected_fail_ref)  = alt_allele_check(\%oligo_target, \@allele_corrected, $debug);
 @allele_corrected_pass = @$allele_corrected_pass_ref; @allele_corrected_fail = @$allele_corrected_fail_ref;
 
-#TODO add in 50nt files to pass to this filtering sub
-my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = filter(\%oligo_target, \@allele_uncorrected, $debug);
+# send allele uncorrected file to alternate allele check function
+my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = alt_allele_check(\%oligo_target, \@allele_uncorrected, $debug);
 @allele_uncorrected_pass = @$allele_uncorrected_pass_ref; @allele_uncorrected_fail = @$allele_uncorrected_fail_ref;
+
+# send allele corrected + uncorrected data from the alt_allele_check function to the filtering function
+# also send the 50 nt files to the filtering function
+my (@allele_corrected_pass_filtered,  @allele_uncorrected_pass_filtered, @corrected_50nt_filtered,  @uncorrected_50nt_filtered); 
+#my ($allele_corrected_pass_filtered_ref, @allele_uncorrected_pass_filtered_ref, @corrected_50nt_filtered_ref, @uncorrected_50nt_filtered_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug); 
+#@allele_corrected_pass_filtered = @$allele_corrected_pass_filtered_ref; @allele_uncorrected_pass_filtered = @$allele_uncorrected_pass_filtered_ref;
+#@corrected_50nt_filtered = @$corrected_50nt_filtered_ref; @uncorrected_50nt_filtered =@$uncorrected_50nt_filtered_ref; 
 
 
 print "List of output files:\n";
+# TODO: change this to the data returned from the filter sub
 # write the files
 # need output filename (using basename), array, and output directory
 write_file(\@allele_corrected_pass,   $output_dir, $sample_name, "alleleErrC.pass.txt");
-write_file(\@allele_corrected_fail,   $output_dir, $sample_name, "alleleErrC.fail.txt");
+#write_file(\@allele_corrected_fail,   $output_dir, $sample_name, "alleleErrC.fail.txt");
 write_file(\@allele_uncorrected_pass, $output_dir, $sample_name, "alleleNoC.pass.txt");
-write_file(\@allele_uncorrected_fail, $output_dir, $sample_name, "alleleNoC.fail.txt");
+#write_file(\@allele_uncorrected_fail, $output_dir, $sample_name, "alleleNoC.fail.txt");
 #TODO add in output files for 50nt corr/uncorr pass/fail
 
-# read file subroutine to injest input files
+# read file subroutine to ingest input files
 sub read_file{
 	my ($file, $is_this_oligo_target_file) = @_;
 	my (%design_file, @file_contents);
@@ -107,7 +113,7 @@ sub read_file{
 		
 			# if we already have this loci (chromosome + loci combo stored in $key) in the %design_file hash,
 			# check for errors. Errors include same chr+loci, but different ref alleles, OR same chr+loci, but different primary alt alleles.
-			# if there are not any errors, we continue to adding it to the hash - which we really don't need to do
+			# if there are not any errors, we continue to adding it to the hash - which we really don't need to do (it'll overwrite what's there already)
 			if ($design_file{$key}){
 				die "Reference alleles for the same loci do not match: chr:$chr loci:$loci ref1:$design_file{$key}->{'ref'} ref2:$ref\n" if $design_file{$key}->{"ref"} ne $ref;
 				die "Primary alternate alleles for the same loci do not match: chr:$chr loci:$loci alt1:$design_file{$key}->{'alt'} alt2:$alt\n" if $design_file{$key}->{'alt'} ne $alt;
@@ -148,92 +154,160 @@ sub write_file{
 	close $write_fh;
 }
 
-#TODO: need to add in new function for checking alt allele, and rearrange data if necessary.
+# Function for comparison of the design file & a given file, which is either allele_corrected, or allele_uncorrected
+# We need to see if the primary alternate allele that's in a given file matches 
+# what we'd expect (e.g. what the design file contains). 
 
+# check that the ref allele was called -> PASS
+# check that the expected alt allele was called -> PASS
+# check that the expected allele was called not at the primary position (in secondary or tertiary, etc.) --> modification of data, PASS
+# check that a non-expected alt allele was called --> modification of data, PASS
+
+# things that need to be modified for the last two conditions listed above:
+    # modify ALT, total DP, AAF and %nt QC
+
+sub alt_allele_check{
+	my ($design_file_ref, $file_to_compare_ref, $print_if_debug) = @_;
+
+	# de-reference the references that were passed to the subroutine
+	my %design_file = %$design_file_ref; 
+	my @file_to_compare = @$file_to_compare_ref;
+	
+	# examine the file of interest (allele corrected or uncorrected)
+	# see what matched up with the design file and what does not.
+	my (@pass, @fail); 
+	foreach my $line (@file_to_compare){
+		# split line on tabs, then save the relevant fields to variables
+		my @temp_line = split(/\t/, $line); 
+
+		# ALLELE CORRECTED\UNCORRECTED columns of interest
+		# (indexed starting at 0)
+		# 0: chromosome
+		# 1: loci or site 1
+		# 2: loci or site 2
+		# 3: reference allele
+		# 4: alt allele(s)
+		# 5: total read count
+		# 6: AD (ref, alt 1, alt2, ...)
+		# 7: ALTREADS
+		# 8: DPREADS
+		# 9: AAF
+		# 10: %nt QC
+		
+		my $chr = $temp_line[0]; my $loci = $temp_line[1]; my $ref = $temp_line[3]; my $alt = $temp_line[4];
+
+		# check that we do have this chromosome + loci combo in the design file
+		if ($design_file{$chr."_".$loci}){
+			# going to extract the first character from the alt string to get the primary alt allele.
+			# alt column could be only one character, such as A
+			# it also could be multiple comma separated characters, such as T,C,G
+			# and if there is no alt allele - the column denotes the reference, represented as <*>.
+			
+			my $primary_alt = substr($alt, 0, 1); 
+			print "Design file ref and alt: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $design_file{$chr."_".$loci}->{'alt'}, "\n" if $print_if_debug;
+			print "Input file ref and alt: ", $ref, "\t", $alt, "\n" if $print_if_debug; 
+			print $line,"\n" if $print_if_debug;
+			
+			# verify reference in this line is the same as in the design file:
+			if($design_file{$chr."_".$loci}->{'ref'} eq $ref){
+
+				# ALT ALLELE CHECK CONDITIONS:
+				# 1. ref allele only
+				if ( $alt eq "<*>" ){
+					push(@pass, $line);
+					print "PzASS due to reference match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and alt is $alt\n\n" if $print_if_debug;
+
+				# 2. expected alt allele only
+				}elsif ( $design_file{$chr."_".$loci}->{'alt'} eq $primary_alt ){
+					push(@pass, $line); 
+					print "PASS due to primary alt match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$primary_alt\t $alt\n\n" if $print_if_debug; 
+
+				# 3. expected alt allele in secondary/tertiary/etc position
+				}elsif ( $alt =~m/$design_file{$chr."_".$loci}->{'alt'}/ ){
+					#TODO: need to modify:
+					# ALT (col 8) 
+					# TOTAL DP (col 9)  = ref + ALT
+					# AAF (col 10)  = new ALT / new total DP = ((col 8)/ (col9)) 
+					# % nt QC (col 11) = new col 9 / col 6 
+
+					push(@pass, $line);
+					print "PASS due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n\n" if $print_if_debug; 
+
+				# check for alternative alleles that are not the expected one (e.g. not in the design file)
+				# modify alt, total dp, aaf if so	
+
+				# 4. alternative alleles that are not the expected one (e.g. not in the design file)		
+				}elsif( $alt !~/$design_file{$chr."_".$loci}->{'alt'}/ ){
+					print "PASS (needs modifications) due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n" if $print_if_debug; 
+					# Alt goes to 0
+					# Total dp is (original total dp – original alt) or AD=(probably easier)
+					# AAF goes to 0
+					# % reads that are good quality (%nt QC), put this to 0??? Not sure yet
+						# We will come back to this
+					# If don’t find matching chr/loci combo in design file -> fail
+					my $AD = $temp_line[6];
+					my $ref_count_from_AD = $1 if $AD =~m/AD=(\d+),/;
+					my @end_of_line = @temp_line[11...38];
+					my $end_of_line = join("\t", @end_of_line) ;
+					#TODO: need to handle %nt QC column
+					my $modified_line = "$chr\t$loci\t$temp_line[2]\t$ref\t$alt\t$temp_line[5]\t$AD\t0\t$ref_count_from_AD\t0\t$temp_line[10]\t$end_of_line\n";	
+
+					print $modified_line,"\n\n" if $print_if_debug;
+
+					# save modified line
+					push(@pass, $modified_line);
+				
+				# catch for any other condition we were not expecting
+				}else{
+					print "Exception in logic found in alt_allele_check function, due to the following line!\n$line\n";
+					push(@fail, $line);
+					print "FAIL due to a condition that is not covered by the logic in the alt_allele_check function.\n" if $print_if_debug;
+				}
+
+
+			# reference in this line IS NOT the same as in the design file, yield an error:
+			}else{
+				print "Reference listed for $chr $loci in the following line does not match the ref in the design file.\n";
+				push (@fail, $line);
+				print "FAIL due to different ref in design file for $chr $loci. DF has $design_file{$chr."_".$loci}->{'ref'} and this line has $ref\n" if $print_if_debug;
+			}
+		
+	
+		}else{
+			# warn if we do not find a matching chr + loci combination in the design file. 
+			print "Chromosome and loci combination $chr $loci not found in design file.\n";
+			push(@fail, $line);
+			print "FAIL due to: $chr & $loci missing in design file.\n" if $print_if_debug; 
+		}			
+	}
+	return (\@pass, \@fail);
+}
 
 
 #TODO: need to rewrite this filtering function. Will repurpose the name of this function for filtering for passing read depth.
 #TODO: if corrected/uncorrected read depth total does not match -> throw out amplicon
 #TODO: if amplicon is thrown out, discard 50nt entries (NOT VARIANT)
 
-# Function for comparison of the design file & a given file, which is one of:
-# allele_corrected, allele_uncorrected, corrected_50nt, or uncorrected_50nt.
-# We need to see if the primary alternate allele that's in a given file matches 
-# what we'd expect (e.g. what the design file contains). 
-
-# renamed this sub from "check_primary_alt_allele" to "filter" as this gives a better indication of what it actually does.
-# After speaking with Sonia, the script should not throw out lines with REF only called, should not throw out anything with
-# the expected alt allele & should only run a check when the secondary alt allele is called.
-sub filter{
-	my ($design_file_ref, $file_to_compare_ref, $print_if_debug) = @_;
-
-	# de-reference the references that were passed to the subroutine
-	my %design_file = %$design_file_ref; 
-	my @file_to_compare = @$file_to_compare_ref; 
-	
-	# examine the file of interest (allele or 50nt, and corrected or uncorrected)
-	# see what matched up with the design file and what does not.
-	my (@pass, @fail); 
-	foreach my $line (@file_to_compare){
-		my @temp = split(/\t/, $line);
-		# ALLELE CORRECTED\UNCORRECTED OR 50nt CORRECTED\UNCORRECTED, columns of interest
-		# (indexed starting at 0)
-		# 0: chromosome
-		# 1: loci
-		# 3: reference allele
-		# 4: alt allele
-		my $chr = $temp[0]; my $loci = $temp[1]; my $ref = $temp[3]; my $alt = $temp[4];
-
-		# check that we do have this chromosome + loci combo in the design file
-		if ($design_file{$chr."_".$loci}){
-			# check reference and alt.
-			
-			# going to extract the first character from the alt string to get the primary alt allele.
-			# alt string could be only one character, such as A
-			# it also could be multiple comma separated characters, such as T,C,G
-			# and if the primary alt allele is actually the reference, it will start with <*>.
-
-			# irregardless of what the string looks like, if the extracted first character does not match
-			# the design file's alt, then we do not want to retain it.
-
-			# update: this is not the intended behavior of the script, after speaking with Sonia.
-			# here are the expected outcomes for each scenario:
-			# * anything reference only --> pass
-			# * anything with expected alt allele --> pass
-			# * check should only be done when secondary alt allele is called.
-
-
-			my $primary_alt = substr($alt, 0, 1); 
-			#print length($alt), "\t", $alt, "\n";
-			print "Design file ref and alt: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $design_file{$chr."_".$loci}->{'alt'}, "\n" if $print_if_debug;
-			print "Input file ref and alt: ", $ref, "\t", $alt, "\n" if $print_if_debug; 
-
-			# check first that reference only allele goes to pass.  
-			if ( ($design_file{$chr."_".$loci}->{'ref'} eq $ref)  &&  $alt eq "<*>"){
-				push(@pass, $line);
-				print "PASS due to reference match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and alt is $alt\n\n" if $print_if_debug;
-			}
-			# next check that expected alt allele goes to pass. 
-			elsif ( ($design_file{$chr."_".$loci}->{'ref'} eq $ref ) && ( $design_file{$chr."_".$loci}->{'alt'} eq $primary_alt )){
-				push(@pass, $line); 
-				print "PASS due to primary alt match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$primary_alt\t $alt\n\n" if $print_if_debug; 
-			}	
-			# if reference/alt didn't match, we do not want to retain the line..
-			# need both reference and alt to match the design file.
-			else{
-				push (@fail, $line);
-				print "FAIL due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$primary_alt\t $alt\n\n" if $print_if_debug; 
-				next;  
-			}	
-
-		}else{
-			# warn if we do not find a matching chr + loci combination in the design file. 
-			print "Chromosome and loci combination $chr $loci not found in design file.\n"; 
-		}			
-	}
-
-	return (\@pass, \@fail);
-}
+#sub filter{
+#	my ($allele_corrected_pass_ref, $allele_uncorrected_pass_ref, $corrected_50nt_ref, $uncorrected_50nt_ref, $cutoff, $print_if_debug) = @_;
+#
+#	# de-reference the references that were passed to the subroutine
+#	my @allele_corrected_pass = @$allele_corrected_pass_ref;
+#	my @allele_uncorrected_pass = @$allele_uncorrected_pass_ref;
+#	my @corrected_50nt = @$corrected_50nt_ref;
+#	my @uncorrected_50nt = @$uncorrected_50nt_ref;
+#
+#	print $cutoff, "\n";
+#
+#	foreach my $line (){
+#
+#
+#	}			
+#
+#	
+#	return ();
+#	
+#}
 
 
 # for usage statement
