@@ -65,17 +65,21 @@ printf("%-25s %-150s\n\n", "Sample name:",             $sample_name);
 my (@allele_corrected_pass, @allele_corrected_fail, @allele_uncorrected_pass, @allele_uncorrected_fail); 
 
 # send allele_corrected file to alternate allele check function
+print "Running alt allele check for allele corrected file.\n";
 my ($allele_corrected_pass_ref, $allele_corrected_fail_ref)  = alt_allele_check(\%oligo_target, \@allele_corrected, $debug);
 @allele_corrected_pass = @$allele_corrected_pass_ref; @allele_corrected_fail = @$allele_corrected_fail_ref;
 
 # send allele uncorrected file to alternate allele check function
+print "Running alt allele check for allele uncorrected file.\n";
 my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = alt_allele_check(\%oligo_target, \@allele_uncorrected, $debug);
 @allele_uncorrected_pass = @$allele_uncorrected_pass_ref; @allele_uncorrected_fail = @$allele_uncorrected_fail_ref;
 
 # send allele corrected + uncorrected data from the alt_allele_check function to the filtering function
 # also send the 50 nt files to the filtering function
-my (@allele_corrected_pass_filtered,  @allele_uncorrected_pass_filtered, @corrected_50nt_filtered,  @uncorrected_50nt_filtered); 
+my (@allele_corrected_pass_filtered,  @allele_uncorrected_pass_filtered, @corrected_50nt_filtered,  @uncorrected_50nt_filtered);
 #my ($allele_corrected_pass_filtered_ref, @allele_uncorrected_pass_filtered_ref, @corrected_50nt_filtered_ref, @uncorrected_50nt_filtered_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug); 
+#TODO save returned >10k files from filter function
+filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug); 
 #@allele_corrected_pass_filtered = @$allele_corrected_pass_filtered_ref; @allele_uncorrected_pass_filtered = @$allele_uncorrected_pass_filtered_ref;
 #@corrected_50nt_filtered = @$corrected_50nt_filtered_ref; @uncorrected_50nt_filtered =@$uncorrected_50nt_filtered_ref; 
 
@@ -204,9 +208,9 @@ sub alt_allele_check{
 			# and if there is no alt allele - the column denotes the reference, represented as <*>.
 			
 			my $primary_alt = substr($alt, 0, 1); 
-			print "Design file ref and alt: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $design_file{$chr."_".$loci}->{'alt'}, "\n" if $print_if_debug;
-			print "Input file ref and alt: ", $ref, "\t", $alt, "\n" if $print_if_debug; 
-			print $line,"\n" if $print_if_debug;
+			#print "Design file ref and alt: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $design_file{$chr."_".$loci}->{'alt'}, "\n" if $print_if_debug;
+			#print "Input file ref and alt: ", $ref, "\t", $alt, "\n" if $print_if_debug; 
+			#print $line,"\n" if $print_if_debug;
 			
 			# verify reference in this line is the same as in the design file:
 			if($design_file{$chr."_".$loci}->{'ref'} eq $ref){
@@ -215,44 +219,61 @@ sub alt_allele_check{
 				# 1. ref allele only
 				if ( $alt eq "<*>" ){
 					push(@pass, $line);
-					print "PzASS due to reference match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and alt is $alt\n\n" if $print_if_debug;
+					#print "PASS due to reference match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and alt is $alt\n\n" if $print_if_debug;
 
-				# 2. expected alt allele only
+				# 2. expected alt allele in primary allele position
 				}elsif ( $design_file{$chr."_".$loci}->{'alt'} eq $primary_alt ){
 					push(@pass, $line); 
-					print "PASS due to primary alt match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$primary_alt\t $alt\n\n" if $print_if_debug; 
+					#print "PASS due to primary alt match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$primary_alt\t $alt\n\n" if $print_if_debug; 
 
 				# 3. expected alt allele in secondary/tertiary/etc position
-				}elsif ( $alt =~m/$design_file{$chr."_".$loci}->{'alt'}/ ){
+				}elsif ( $alt =~m/($design_file{$chr."_".$loci}->{'alt'})/ ){
 					#TODO: need to modify:
 					# ALT (col 8) 
 					# TOTAL DP (col 9)  = ref + ALT
 					# AAF (col 10)  = new ALT / new total DP = ((col 8)/ (col9)) 
 					# % nt QC (col 11) = new col 9 / col 6 
+					# position of match in $alt
+					my $alt_tmp = $alt;
+					$alt_tmp =~ tr/,//d; # remove commas to get position
+							     # used to pull out correct alt counts
+					my $position = index($alt_tmp, $design_file{$chr."_".$loci}->{'alt'}) ;
 
-					push(@pass, $line);
-					print "PASS due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n\n" if $print_if_debug; 
+					my $AD = $temp_line[6];
+					$AD =~ tr/AD=//d;
+					my @temp_for_alt_counts =split(",", $AD);
+					
+					# pull out correct alt counts based upon the position of the expected alt allele in col 8. So in the AD column, the correct alt counts will be position plus one (as reference is listed first in the AD string)
+					my $correct_alt_counts = $temp_for_alt_counts[$position + 1];
+					my $recalc_dp = $temp_for_alt_counts[0] + $correct_alt_counts; # ref + alt
+					my $aaf = ($correct_alt_counts/ $recalc_dp);	
+					my $percent_nt_qc = ($recalc_dp / $temp_line[5]);				
+		
+					my @end_of_line = @temp_line[11...38];
+					my $end_of_line = join("\t", @end_of_line) ;
+					my $modified_line = "$chr\t$loci\t$temp_line[2]\t$ref\t$alt\t$temp_line[5]\tAD=$AD\t$correct_alt_counts\t$recalc_dp\t$aaf\t$percent_nt_qc\t$end_of_line\n";	
 
+					#print $modified_line, "\n\n" if $print_if_debug;
+					push(@pass, $modified_line);
+					#print "PASS due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n" if $print_if_debug; 
+					
 				# check for alternative alleles that are not the expected one (e.g. not in the design file)
 				# modify alt, total dp, aaf if so	
 
 				# 4. alternative alleles that are not the expected one (e.g. not in the design file)		
 				}elsif( $alt !~/$design_file{$chr."_".$loci}->{'alt'}/ ){
-					print "PASS (needs modifications) due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n" if $print_if_debug; 
+					#print "PASS (needs modifications) due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n" if $print_if_debug; 
 					# Alt goes to 0
 					# Total dp is (original total dp – original alt) or AD=(probably easier)
 					# AAF goes to 0
 					# % reads that are good quality (%nt QC), put this to 0??? Not sure yet
-						# We will come back to this
-					# If don’t find matching chr/loci combo in design file -> fail
 					my $AD = $temp_line[6];
 					my $ref_count_from_AD = $1 if $AD =~m/AD=(\d+),/;
+					my $percent_nt_qc = $ref_count_from_AD / $temp_line[5] ; 
 					my @end_of_line = @temp_line[11...38];
-					my $end_of_line = join("\t", @end_of_line) ;
-					#TODO: need to handle %nt QC column
+					my $end_of_line = join("\t", @end_of_line);
 					my $modified_line = "$chr\t$loci\t$temp_line[2]\t$ref\t$alt\t$temp_line[5]\t$AD\t0\t$ref_count_from_AD\t0\t$temp_line[10]\t$end_of_line\n";	
-
-					print $modified_line,"\n\n" if $print_if_debug;
+					#print $modified_line,"\n\n" if $print_if_debug;
 
 					# save modified line
 					push(@pass, $modified_line);
@@ -269,7 +290,7 @@ sub alt_allele_check{
 			}else{
 				print "Reference listed for $chr $loci in the following line does not match the ref in the design file.\n";
 				push (@fail, $line);
-				print "FAIL due to different ref in design file for $chr $loci. DF has $design_file{$chr."_".$loci}->{'ref'} and this line has $ref\n" if $print_if_debug;
+				print "FAIL due to different ref in design file for $chr $loci. DF has  ", $design_file{$chr."_".$loci}->{'ref'}, "  and this line has $ref\n" if $print_if_debug;
 			}
 		
 	
@@ -279,7 +300,9 @@ sub alt_allele_check{
 			push(@fail, $line);
 			print "FAIL due to: $chr & $loci missing in design file.\n" if $print_if_debug; 
 		}			
-	}
+	} #foreach close
+	my $input_array_size = $#file_to_compare + 1; my $pass_array_size = $#pass +1; my $fail_array_size = $#fail +1; 
+	print "\tSize of input data to function:($input_array_size)\n\tSize of output \"passing\" data:($pass_array_size)\n\tSize of output \"failing\" data:($fail_array_size)\n\n";
 	return (\@pass, \@fail);
 }
 
@@ -288,26 +311,46 @@ sub alt_allele_check{
 #TODO: if corrected/uncorrected read depth total does not match -> throw out amplicon
 #TODO: if amplicon is thrown out, discard 50nt entries (NOT VARIANT)
 
-#sub filter{
-#	my ($allele_corrected_pass_ref, $allele_uncorrected_pass_ref, $corrected_50nt_ref, $uncorrected_50nt_ref, $cutoff, $print_if_debug) = @_;
-#
-#	# de-reference the references that were passed to the subroutine
-#	my @allele_corrected_pass = @$allele_corrected_pass_ref;
-#	my @allele_uncorrected_pass = @$allele_uncorrected_pass_ref;
-#	my @corrected_50nt = @$corrected_50nt_ref;
-#	my @uncorrected_50nt = @$uncorrected_50nt_ref;
-#
-#	print $cutoff, "\n";
-#
-#	foreach my $line (){
-#
-#
-#	}			
-#
-#	
-#	return ();
-#	
-#}
+sub filter{
+	my ($allele_corrected_pass_ref, $allele_uncorrected_pass_ref, $corrected_50nt_ref, $uncorrected_50nt_ref, $cutoff, $print_if_debug) = @_;
+
+	# de-reference the references that were passed to the subroutine
+	my @allele_corrected_pass = @$allele_corrected_pass_ref;
+	my @allele_uncorrected_pass = @$allele_uncorrected_pass_ref;
+	my @corrected_50nt = @$corrected_50nt_ref;
+	my @uncorrected_50nt = @$uncorrected_50nt_ref;
+
+	print $cutoff, "\n";
+
+	my %allele_corrected_pass_dp_above_cutoff; my %allele_corrected_pass_dp_below_cutoff;
+
+	foreach my $line (@allele_corrected_pass){
+		my @temp_line = split("\t", $line);
+		print "$line\n$temp_line[8]\n";
+		if ($temp_line[8] >= $cutoff){
+			$allele_corrected_pass_dp_above_cutoff{$temp_line[36]}=$line;
+			#print "$temp_line[36]\n"; 			
+		}else{
+			$allele_corrected_pass_dp_below_cutoff{$temp_line[36]}=$line;
+		}
+		
+	}			
+
+	# TODO:
+	# go through allele uncorrected pass
+	# verify discarded ones in allele corrected pass -> discard from allele uncorrected too
+	# if any discarded from allele uncorrected -> discard from allele corrected, too
+	# then for the discarded ones, remove 50nt as well
+
+
+
+	# TODO:
+	# return files of interest 	
+	#return ();
+
+	#print "$#allele_corrected_pass\t$#allele_uncorrected_pass\t$#corrected_50nt\t$#uncorrected_50nt";
+	
+}
 
 
 # for usage statement
