@@ -5,9 +5,9 @@ use warnings;
 use Getopt::Long;	# for script arguments for file input passing
 use Pod::Usage;   	# for usage statement
 
-# command line arg handling
 my ($help, $oligo_target_file, $allele_corrected, $allele_uncorrected, $corrected_50nt, $uncorrected_50nt, $output_dir, $sample_name, $cutoff, $debug);
 
+# command line arg handling
 GetOptions(
         'help|h'               => \$help,
         'oligo_target_file=s'  => \$oligo_target_file,
@@ -39,13 +39,13 @@ if (-d $output_dir){
 	mkdir $output_dir unless -d $output_dir;
 }
 
-# declaring hash and arrays for storing data that was read in
+# declaring hash and arrays for storing data from each of the files that will be read in
 my (%oligo_target, @allele_corrected, @allele_uncorrected, @corrected_50nt, @uncorrected_50nt);
 
-# Tell the user what files we are using
+# Tell the user what files & parameters we are using
 print "\nRunning verify_primary_alt_allele.pl with the following parameters:\n\n";
 printf("%-25s %-150s\n",   "Oligo design file:",       $oligo_target_file);
-printf("%-25s %-150s\n",   "Allele corrected file:",   $allele_corrected); 
+printf("%-25s %-150s\n",   "Allele corrected file:",   $allele_corrected);
 printf("%-25s %-150s\n",   "Allele uncorrected file:", $allele_uncorrected);
 printf("%-25s %-150s\n",   "Corrected 50nt file:",     $corrected_50nt);
 printf("%-25s %-150s\n",   "Uncorrected 50nt file:",   $uncorrected_50nt);
@@ -62,7 +62,7 @@ printf("%-25s %-150s\n\n", "Sample name:",             $sample_name);
 
 # compare each file (allele corrected/uncorrected & 50nt corrected/uncorrected)
 # with the design file.
-my (@allele_corrected_pass, @allele_corrected_fail, @allele_uncorrected_pass, @allele_uncorrected_fail); 
+my (@allele_corrected_pass, @allele_corrected_fail, @allele_uncorrected_pass, @allele_uncorrected_fail);
 
 # send allele_corrected file to alternate allele check function
 print "Running alt allele check for allele corrected file.\n";
@@ -77,11 +77,12 @@ my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = alt_allele_che
 # send allele corrected + uncorrected data from the alt_allele_check function to the filtering function
 # also send the 50 nt files to the filtering function
 my (@allele_corrected_pass_filtered,  @allele_uncorrected_pass_filtered, @corrected_50nt_filtered,  @uncorrected_50nt_filtered);
-#my ($allele_corrected_pass_filtered_ref, @allele_uncorrected_pass_filtered_ref, @corrected_50nt_filtered_ref, @uncorrected_50nt_filtered_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug); 
+#my ($allele_corrected_pass_filtered_ref, @allele_uncorrected_pass_filtered_ref, @corrected_50nt_filtered_ref, @uncorrected_50nt_filtered_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug);
 #TODO save returned >10k files from filter function
-filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug); 
+print "Running filter function to discard allele corrected, allele uncorrected, 50nt corrected, and 50nt uncorrected data below the cutoff.\n";
+filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug);
 #@allele_corrected_pass_filtered = @$allele_corrected_pass_filtered_ref; @allele_uncorrected_pass_filtered = @$allele_uncorrected_pass_filtered_ref;
-#@corrected_50nt_filtered = @$corrected_50nt_filtered_ref; @uncorrected_50nt_filtered =@$uncorrected_50nt_filtered_ref; 
+#@corrected_50nt_filtered = @$corrected_50nt_filtered_ref; @uncorrected_50nt_filtered =@$uncorrected_50nt_filtered_ref;
 
 
 print "List of output files:\n";
@@ -99,11 +100,11 @@ sub read_file{
 	my ($file, $is_this_oligo_target_file) = @_;
 	my (%design_file, @file_contents);
 
-	open (my $read_fh, "<", $file) || die "Cannot open $file for reading.\n";  
-	
+	open (my $read_fh, "<", $file) || die "Cannot open $file for reading.\n";
+
 	while (my $line =<$read_fh>){
 		chomp $line;
-		
+
 		# DESIGN FILE, columns of interest (indexing by 0 here):
 		# 2: Chromosome
 		# 3: Loci
@@ -111,10 +112,10 @@ sub read_file{
 		# 6: Alt
 		if ($is_this_oligo_target_file){
 			my @temp = split(/\t/, $line);
-			
+
 			my $chr = $temp[2]; my $loci = $temp[3]; my $ref = $temp[5]; my $alt = $temp[6];
 			my $key = $temp[2] ."_" . $loci;
-		
+
 			# if we already have this loci (chromosome + loci combo stored in $key) in the %design_file hash,
 			# check for errors. Errors include same chr+loci, but different ref alleles, OR same chr+loci, but different primary alt alleles.
 			# if there are not any errors, we continue to adding it to the hash - which we really don't need to do (it'll overwrite what's there already)
@@ -127,16 +128,16 @@ sub read_file{
 			}else{
 				$design_file{$key}{"ref"} = $ref;
 				$design_file{$key}{"alt"} = $alt;
-			}	
+			}
 		# if we are not processing the design file,
-		# then just add each line of the input file to an array 
+		# then just add each line of the input file to an array
 		# and then return the file contents array
 		}else{
 			push(@file_contents, $line);
 		}
-	
+
 	}
-	
+
 	return %design_file if %design_file;
 	return @file_contents if @file_contents;
 	close $read_fh;
@@ -150,7 +151,7 @@ sub write_file{
 	my $full_path_to_output_file = $dir . "/" . $prefix . "-" . $suffix;
 	print $full_path_to_output_file, "\n";
 	open(my $write_fh, ">", $full_path_to_output_file) || die "Unable to open filehandle for writing $dir\\$prefix$suffix:$!\n";
-	
+
 	for my $line (@data_to_write){
 		print $write_fh $line, "\n";
 	}
@@ -159,8 +160,8 @@ sub write_file{
 }
 
 # Function for comparison of the design file & a given file, which is either allele_corrected, or allele_uncorrected
-# We need to see if the primary alternate allele that's in a given file matches 
-# what we'd expect (e.g. what the design file contains). 
+# We need to see if the primary alternate allele that's in a given file matches
+# what we'd expect (e.g. what the design file contains).
 
 # check that the ref allele was called -> PASS
 # check that the expected alt allele was called -> PASS
@@ -174,15 +175,15 @@ sub alt_allele_check{
 	my ($design_file_ref, $file_to_compare_ref, $print_if_debug) = @_;
 
 	# de-reference the references that were passed to the subroutine
-	my %design_file = %$design_file_ref; 
+	my %design_file = %$design_file_ref;
 	my @file_to_compare = @$file_to_compare_ref;
-	
+
 	# examine the file of interest (allele corrected or uncorrected)
 	# see what matched up with the design file and what does not.
-	my (@pass, @fail); 
+	my (@pass, @fail);
 	foreach my $line (@file_to_compare){
 		# split line on tabs, then save the relevant fields to variables
-		my @temp_line = split(/\t/, $line); 
+		my @temp_line = split(/\t/, $line);
 
 		# ALLELE CORRECTED\UNCORRECTED columns of interest
 		# (indexed starting at 0)
@@ -197,7 +198,7 @@ sub alt_allele_check{
 		# 8: DPREADS
 		# 9: AAF
 		# 10: %nt QC
-		
+
 		my $chr = $temp_line[0]; my $loci = $temp_line[1]; my $ref = $temp_line[3]; my $alt = $temp_line[4];
 
 		# check that we do have this chromosome + loci combo in the design file
@@ -206,12 +207,12 @@ sub alt_allele_check{
 			# alt column could be only one character, such as A
 			# it also could be multiple comma separated characters, such as T,C,G
 			# and if there is no alt allele - the column denotes the reference, represented as <*>.
-			
-			my $primary_alt = substr($alt, 0, 1); 
+
+			my $primary_alt = substr($alt, 0, 1);
 			#print "Design file ref and alt: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $design_file{$chr."_".$loci}->{'alt'}, "\n" if $print_if_debug;
-			#print "Input file ref and alt: ", $ref, "\t", $alt, "\n" if $print_if_debug; 
+			#print "Input file ref and alt: ", $ref, "\t", $alt, "\n" if $print_if_debug;
 			#print $line,"\n" if $print_if_debug;
-			
+
 			# verify reference in this line is the same as in the design file:
 			if($design_file{$chr."_".$loci}->{'ref'} eq $ref){
 
@@ -223,16 +224,16 @@ sub alt_allele_check{
 
 				# 2. expected alt allele in primary allele position
 				}elsif ( $design_file{$chr."_".$loci}->{'alt'} eq $primary_alt ){
-					push(@pass, $line); 
-					#print "PASS due to primary alt match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$primary_alt\t $alt\n\n" if $print_if_debug; 
+					push(@pass, $line);
+					#print "PASS due to primary alt match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$primary_alt\t $alt\n\n" if $print_if_debug;
 
 				# 3. expected alt allele in secondary/tertiary/etc position
 				}elsif ( $alt =~m/($design_file{$chr."_".$loci}->{'alt'})/ ){
 					#TODO: need to modify:
-					# ALT (col 8) 
+					# ALT (col 8)
 					# TOTAL DP (col 9)  = ref + ALT
-					# AAF (col 10)  = new ALT / new total DP = ((col 8)/ (col9)) 
-					# % nt QC (col 11) = new col 9 / col 6 
+					# AAF (col 10)  = new ALT / new total DP = ((col 8)/ (col9))
+					# % nt QC (col 11) = new col 9 / col 6
 					# position of match in $alt
 					my $alt_tmp = $alt;
 					$alt_tmp =~ tr/,//d; # remove commas to get position
@@ -242,42 +243,42 @@ sub alt_allele_check{
 					my $AD = $temp_line[6];
 					$AD =~ tr/AD=//d;
 					my @temp_for_alt_counts =split(",", $AD);
-					
+
 					# pull out correct alt counts based upon the position of the expected alt allele in col 8. So in the AD column, the correct alt counts will be position plus one (as reference is listed first in the AD string)
 					my $correct_alt_counts = $temp_for_alt_counts[$position + 1];
 					my $recalc_dp = $temp_for_alt_counts[0] + $correct_alt_counts; # ref + alt
-					my $aaf = ($correct_alt_counts/ $recalc_dp);	
-					my $percent_nt_qc = ($recalc_dp / $temp_line[5]);				
-		
+					my $aaf = ($correct_alt_counts/ $recalc_dp);
+					my $percent_nt_qc = ($recalc_dp / $temp_line[5]);
+
 					my @end_of_line = @temp_line[11...38];
 					my $end_of_line = join("\t", @end_of_line) ;
-					my $modified_line = "$chr\t$loci\t$temp_line[2]\t$ref\t$alt\t$temp_line[5]\tAD=$AD\t$correct_alt_counts\t$recalc_dp\t$aaf\t$percent_nt_qc\t$end_of_line\n";	
+					my $modified_line = "$chr\t$loci\t$temp_line[2]\t$ref\t$alt\t$temp_line[5]\tAD=$AD\t$correct_alt_counts\t$recalc_dp\t$aaf\t$percent_nt_qc\t$end_of_line\n";
 
 					#print $modified_line, "\n\n" if $print_if_debug;
 					push(@pass, $modified_line);
-					#print "PASS due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n" if $print_if_debug; 
-					
-				# check for alternative alleles that are not the expected one (e.g. not in the design file)
-				# modify alt, total dp, aaf if so	
+					#print "PASS due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n" if $print_if_debug;
 
-				# 4. alternative alleles that are not the expected one (e.g. not in the design file)		
+				# check for alternative alleles that are not the expected one (e.g. not in the design file)
+				# modify alt, total dp, aaf if so
+
+				# 4. alternative alleles that are not the expected one (e.g. not in the design file)
 				}elsif( $alt !~/$design_file{$chr."_".$loci}->{'alt'}/ ){
-					#print "PASS (needs modifications) due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n" if $print_if_debug; 
+					#print "PASS (needs modifications) due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n" if $print_if_debug;
 					# Alt goes to 0
 					# Total dp is (original total dp – original alt) or AD=(probably easier)
 					# AAF goes to 0
 					# % reads that are good quality (%nt QC), put this to 0??? Not sure yet
 					my $AD = $temp_line[6];
 					my $ref_count_from_AD = $1 if $AD =~m/AD=(\d+),/;
-					my $percent_nt_qc = $ref_count_from_AD / $temp_line[5] ; 
+					my $percent_nt_qc = $ref_count_from_AD / $temp_line[5];
 					my @end_of_line = @temp_line[11...38];
 					my $end_of_line = join("\t", @end_of_line);
-					my $modified_line = "$chr\t$loci\t$temp_line[2]\t$ref\t$alt\t$temp_line[5]\t$AD\t0\t$ref_count_from_AD\t0\t$temp_line[10]\t$end_of_line\n";	
+					my $modified_line = "$chr\t$loci\t$temp_line[2]\t$ref\t$alt\t$temp_line[5]\t$AD\t0\t$ref_count_from_AD\t0\t$temp_line[10]\t$end_of_line\n";
 					#print $modified_line,"\n\n" if $print_if_debug;
 
 					# save modified line
 					push(@pass, $modified_line);
-				
+
 				# catch for any other condition we were not expecting
 				}else{
 					print "Exception in logic found in alt_allele_check function, due to the following line!\n$line\n";
@@ -292,16 +293,16 @@ sub alt_allele_check{
 				push (@fail, $line);
 				print "FAIL due to different ref in design file for $chr $loci. DF has  ", $design_file{$chr."_".$loci}->{'ref'}, "  and this line has $ref\n" if $print_if_debug;
 			}
-		
-	
+
+
 		}else{
-			# warn if we do not find a matching chr + loci combination in the design file. 
+			# warn if we do not find a matching chr + loci combination in the design file.
 			print "Chromosome and loci combination $chr $loci not found in design file.\n";
 			push(@fail, $line);
-			print "FAIL due to: $chr & $loci missing in design file.\n" if $print_if_debug; 
-		}			
+			print "FAIL due to: $chr & $loci missing in design file.\n" if $print_if_debug;
+		}
 	} #foreach close
-	my $input_array_size = $#file_to_compare + 1; my $pass_array_size = $#pass +1; my $fail_array_size = $#fail +1; 
+	my $input_array_size = $#file_to_compare + 1; my $pass_array_size = $#pass +1; my $fail_array_size = $#fail +1;
 	print "\tSize of input data to function:($input_array_size)\n\tSize of output \"passing\" data:($pass_array_size)\n\tSize of output \"failing\" data:($fail_array_size)\n\n";
 	return (\@pass, \@fail);
 }
@@ -320,36 +321,106 @@ sub filter{
 	my @corrected_50nt = @$corrected_50nt_ref;
 	my @uncorrected_50nt = @$uncorrected_50nt_ref;
 
-	print $cutoff, "\n";
+	#print $cutoff, "\n" if $print_if_debug;
 
 	my %allele_corrected_pass_dp_above_cutoff; my %allele_corrected_pass_dp_below_cutoff;
 
 	foreach my $line (@allele_corrected_pass){
 		my @temp_line = split("\t", $line);
-		print "$line\n$temp_line[8]\n";
 		if ($temp_line[8] >= $cutoff){
-			$allele_corrected_pass_dp_above_cutoff{$temp_line[36]}=$line;
-			#print "$temp_line[36]\n"; 			
+			$allele_corrected_pass_dp_above_cutoff{$temp_line[37]}=$line;
+		}elsif($temp_line[8] < $cutoff){
+			$allele_corrected_pass_dp_below_cutoff{$temp_line[37]}=$line;
 		}else{
-			$allele_corrected_pass_dp_below_cutoff{$temp_line[36]}=$line;
+			print "Error with allele corrected pass data!:\n$line\n";
 		}
-		
-	}			
+	}
 
 	# TODO:
 	# go through allele uncorrected pass
 	# verify discarded ones in allele corrected pass -> discard from allele uncorrected too
-	# if any discarded from allele uncorrected -> discard from allele corrected, too
+	# if any discarded from allele uncorrected (<cutoff) -> discard from allele corrected, too
 	# then for the discarded ones, remove 50nt as well
 
+	my %allele_uncorrected_pass_dp_above_cutoff; my %allele_uncorrected_pass_dp_below_cutoff;
+	my @remove_from_50nt_files; # this means the amplicon was < cutoff in at least one of allele corrected/uncorrected
 
+	foreach my $line (@allele_uncorrected_pass){
+		my @temp_line = split("\t", $line);
+		#print "$line\t$temp_line[8]\n" if $print_if_debug;
+
+		# if above cutoff, must check to see if allele_corrected is also above the cutoff for this amplicon
+		if ( $temp_line[8]>=$cutoff  ){
+
+			# allele uncorrected above cutoff, allele corrected below cutoff --> DISCARD
+			if ($allele_corrected_pass_dp_below_cutoff{$temp_line[37]}){
+				#print "$allele_corrected_pass_dp_below_cutoff{$temp_line[37]}\n";
+				# add to remove_from_50nt_files
+				push (@remove_from_50nt_files, $temp_line[37]);
+				# move line to allele_uncorrected_pass_dp_below_cutoff
+				$allele_uncorrected_pass_dp_below_cutoff{$temp_line[37]}=$line;
+			# both above cutoff ---> KEEP
+			}elsif($allele_corrected_pass_dp_above_cutoff{$temp_line[37]}){
+				#print "$allele_corrected_pass_dp_above_cutoff{$temp_line[37]}\n";
+				$allele_uncorrected_pass_dp_above_cutoff{$temp_line[37]}=$line;
+			}else{
+				print "\tError in filter function. Missing primer $temp_line[37] for allele corrected\n" unless $allele_corrected_pass_dp_above_cutoff{$temp_line[37]} || $allele_corrected_pass_dp_below_cutoff{$temp_line[37]};
+				print "Unspecified error in filter function" if $allele_corrected_pass_dp_above_cutoff{$temp_line[37]} || $allele_corrected_pass_dp_below_cutoff{$temp_line[37]};
+			}
+
+		# allele uncorrected below cutoff:
+		# check to see if allele_corrected is above the cutoff.
+		}else{
+
+			# allele uncorrected below cutoff, allele corrected below cutoff --> DISCARD
+			if ($allele_corrected_pass_dp_below_cutoff{$temp_line[37]}){
+				#print "$allele_corrected_pass_dp_below_cutoff{$temp_line[37]}\n";
+				push(@remove_from_50nt_files, $temp_line[37]);
+				$allele_uncorrected_pass_dp_below_cutoff{$temp_line[37]}=$line;
+			# allele uncorrected below, allele corrected above cutoff ---> DISCARD
+			}elsif($allele_corrected_pass_dp_above_cutoff{$temp_line[37]}){
+				push(@remove_from_50nt_files, $temp_line[37]);
+				# remove from above cutoff array for allele corrected, as the allele uncorrected is below
+				my $to_keep = $allele_corrected_pass_dp_above_cutoff{$temp_line[37]};
+				delete $allele_corrected_pass_dp_above_cutoff{$temp_line[37]};
+				$allele_corrected_pass_dp_below_cutoff{$temp_line[37]} = $to_keep;
+				$allele_uncorrected_pass_dp_below_cutoff{$temp_line[37]}=$line;
+
+			}else{
+				 print "\tError in filter function. Missing primer $temp_line[37] for allele uncorrected\n" unless $allele_corrected_pass_dp_below_cutoff{$temp_line[37]} || $allele_corrected_pass_dp_above_cutoff{$temp_line[37]};
+				print "Unspecified error in filter function" if $allele_corrected_pass_dp_below_cutoff{$temp_line[37]} || $allele_corrected_pass_dp_above_cutoff{$temp_line[37]};;
+			}
+
+		}
+
+	}
+
+	#TODO: remove the irrelevant lines from 50nt files
+	my @corrected_50nt_above_cutoff; my @corrected_50nt_below_cutoff;
+	my @uncorrected_50nt_above_cutoff; my @uncorrected_50nt_below_cutoff;
+
+
+	# table to check logic, make sure the numbers make sense
+	my $allele_corrected_size = $#allele_corrected_pass + 1; my $allele_corrected_pass_dp_above_cutoff_size = keys(%allele_corrected_pass_dp_above_cutoff); my $allele_corrected_pass_dp_below_cutoff_size = keys(%allele_corrected_pass_dp_below_cutoff);
+	print "\n\tSize of input allele corrected \"pass\" data to function:($allele_corrected_size)\n\t";
+	print "Size of allele corrected \"pass\" data above cutoff:($allele_corrected_pass_dp_above_cutoff_size)\n\tSize of allele corrected \"pass\" data below cutoff:($allele_corrected_pass_dp_below_cutoff_size)\n\n";
+	#@allele_uncorrected_pass %allele_uncorrected_pass_dp_above_cutoff %allele_uncorrected_pass_dp_below_cutoff
+	my $allele_uncorrected_size = $#allele_uncorrected_pass + 1; my $allele_uncorrected_pass_dp_above_cutoff_size = keys(%allele_uncorrected_pass_dp_above_cutoff); my $allele_uncorrected_pass_dp_below_cutoff_size = keys(%allele_uncorrected_pass_dp_below_cutoff);
+	print "\tSize of input allele uncorrected \"pass\" data to function:($allele_uncorrected_size)\n\t";
+	print "Size of allele uncorrected \"pass\" data above cutoff:($allele_uncorrected_pass_dp_above_cutoff_size)\n\tSize of allele uncorrected \"pass\" data below cutoff:($allele_uncorrected_pass_dp_below_cutoff_size)\n\n";
+	my $remove_from_50nt_files_size = $#remove_from_50nt_files +1;
+	print "\tNumber of amplicons to remove:($remove_from_50nt_files_size)\n\n";
+	my $corrected_50nt_size = $#corrected_50nt + 1;
+	print "\tSize of input corrected 50nt data to function:($corrected_50nt_size)\n\n";
+
+	my $uncorrected_50nt_size = $#uncorrected_50nt + 1;
+	print "\tSize of input corrected 50nt data to function:($uncorrected_50nt_size)\n\n";
 
 	# TODO:
-	# return files of interest 	
+	# return data structures of interest, so we can print them out!
+	# @corrected_50nt_above_cutoff, @uncorrected_50nt_above_cutoff
+	# %allele_uncorrected_pass_dp_above_cutoff, %allele_corrected_pass_dp_above_cutoff
 	#return ();
-
-	#print "$#allele_corrected_pass\t$#allele_uncorrected_pass\t$#corrected_50nt\t$#uncorrected_50nt";
-	
 }
 
 
@@ -365,7 +436,7 @@ Script to verify detected primary alternate allele matches that of the oligo tar
 
 verify_primary_alt_allele.pl [options]
 
-  Options: 
+  Options:
   	-h|help                 brief help message
   	-oligo_target_file      file containing list of oligos targeting which sites, tab-delimited
   	-allele_corrected       allele file (error corrected), tab-delimited
