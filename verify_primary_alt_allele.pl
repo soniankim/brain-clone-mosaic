@@ -32,12 +32,18 @@ pod2usage("$0: Not enough files provided.\n") unless $oligo_target_file && $alle
 # unless you gave a cutoff, we'll use 0
 $cutoff = 0 unless $cutoff;
 
+my $pass_dir = $output_dir . "/pass";
+my $fail_dir = $output_dir . "/fail";
+
 # output directory name must be unique
 if (-d $output_dir){
 	die "Please select a new output directory name. $output_dir already exists.\n";
 }else{
 	mkdir $output_dir unless -d $output_dir;
+	mkdir $pass_dir unless -d $pass_dir;
+	mkdir $fail_dir unless -d $fail_dir;
 }
+
 
 # declaring hash and arrays for storing data from each of the files that will be read in
 my (%oligo_target, @allele_corrected, @allele_uncorrected, @corrected_50nt, @uncorrected_50nt);
@@ -76,24 +82,44 @@ my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = alt_allele_che
 
 # send allele corrected + uncorrected data from the alt_allele_check function to the filtering function
 # also send the 50 nt files to the filtering function
-my (@allele_corrected_pass_filtered,  @allele_uncorrected_pass_filtered, @corrected_50nt_filtered,  @uncorrected_50nt_filtered);
-#my ($allele_corrected_pass_filtered_ref, @allele_uncorrected_pass_filtered_ref, @corrected_50nt_filtered_ref, @uncorrected_50nt_filtered_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug);
-#TODO save returned >10k files from filter function
-print "Running filter function to discard allele corrected, allele uncorrected, 50nt corrected, and 50nt uncorrected data below the cutoff.\n";
-filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug);
-#@allele_corrected_pass_filtered = @$allele_corrected_pass_filtered_ref; @allele_uncorrected_pass_filtered = @$allele_uncorrected_pass_filtered_ref;
-#@corrected_50nt_filtered = @$corrected_50nt_filtered_ref; @uncorrected_50nt_filtered =@$uncorrected_50nt_filtered_ref;
-
+print "Running filter function to discard allele corrected, allele uncorrected, 50nt corrected, and 50nt uncorrected data below the cutoff of $cutoff.\n";
+my (%ac_above_cutoff, %ac_below_cutoff, %auc_above_cutoff, %auc_below_cutoff, @corrected_50nt_above_cutoff, @corrected_50nt_below_cutoff, @uncorrected_50nt_above_cutoff, @uncorrected_50nt_below_cutoff, %ac_missing_in_auc, %auc_missing_in_ac);
+my ($ac_above_cutoff_ref, $ac_below_cutoff_ref, $auc_above_cutoff_ref, $auc_below_cutoff_ref, $corrected_50nt_above_cutoff_ref, $corrected_50nt_below_cutoff_ref, $uncorrected_50nt_above_cutoff_ref, $uncorrected_50nt_below_cutoff_ref, $ac_missing_in_auc_ref, $auc_missing_in_ac_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug);
+# return (%ac_above_cutoff, %ac_below_cutoff, %auc_above_cutoff, %auc_below_cutoff, @corrected_50nt_above_cutoff, @corrected_50nt_below_cutoff, @uncorrected_50nt_above_cutoff, @uncorrected_50nt_below_cutoff, %ac_missing_in_auc, %auc_missing_in_ac);
+%ac_above_cutoff = %$ac_above_cutoff_ref;
+%ac_below_cutoff = %$ac_below_cutoff_ref;
+%auc_above_cutoff = %$auc_above_cutoff_ref;
+%auc_below_cutoff = %$auc_below_cutoff_ref;
+@corrected_50nt_above_cutoff = @$corrected_50nt_above_cutoff_ref;
+@corrected_50nt_below_cutoff = @$corrected_50nt_below_cutoff_ref;
+@uncorrected_50nt_above_cutoff = @$uncorrected_50nt_above_cutoff_ref;
+@uncorrected_50nt_below_cutoff = @$uncorrected_50nt_below_cutoff_ref;
+%ac_missing_in_auc = %$ac_missing_in_auc_ref;
+%auc_missing_in_ac = %$auc_missing_in_ac_ref;
 
 print "List of output files:\n";
-# TODO: change this to the data returned from the filter sub
 # write the files
 # need output filename (using basename), array, and output directory
-write_file(\@allele_corrected_pass,   $output_dir, $sample_name, "alleleErrC.pass.txt");
-#write_file(\@allele_corrected_fail,   $output_dir, $sample_name, "alleleErrC.fail.txt");
-write_file(\@allele_uncorrected_pass, $output_dir, $sample_name, "alleleNoC.pass.txt");
-#write_file(\@allele_uncorrected_fail, $output_dir, $sample_name, "alleleNoC.fail.txt");
-#TODO add in output files for 50nt corr/uncorr pass/fail
+
+# files from alt_allele_check
+print "\tFiles from alt allele check function. The \"fail\" files may be empty- this means your input files were properly formatted!\n";
+write_file(\@allele_corrected_pass,   $pass_dir, $sample_name, "alleleErrC.passAltAlleleCheck.txt", 0);
+write_file(\@allele_corrected_fail,   $fail_dir, $sample_name, "alleleErrC.failAltAlleleCheck.txt", 0);
+write_file(\@allele_uncorrected_pass, $pass_dir, $sample_name, "alleleNoC.passAltAlleleCheck.txt",  0);
+write_file(\@allele_uncorrected_fail, $fail_dir, $sample_name, "alleleNoC.failAltAlleleCheck.txt",  0);
+
+# files from filter function
+print "\n\tFiles from filter function. Data above the specified cutoff $cutoff will be in \"pass\" directory.\n";
+write_file(\%ac_above_cutoff,               $pass_dir, $sample_name, "alleleErrC.passAltAlleleCheck.aboveCutoff.txt", 1); 
+write_file(\%ac_below_cutoff,               $fail_dir, $sample_name, "alleleErrC.passAltAlleleCheck.belowCutoff.txt", 1);
+write_file(\%auc_above_cutoff,              $pass_dir, $sample_name, "alleleNoC.passAltAlleleCheck.aboveCutoff.txt", 1); 
+write_file(\%auc_below_cutoff,              $fail_dir, $sample_name, "alleleNoC.passAltAlleleCheck.belowCutoff.txt", 1);
+write_file(\@corrected_50nt_above_cutoff,   $pass_dir, $sample_name, "50ntErrC.aboveCutoff.txt", 0); 
+write_file(\@corrected_50nt_below_cutoff,   $fail_dir, $sample_name, "50ntErrC.belowCutoff.txt", 0);
+write_file(\@uncorrected_50nt_above_cutoff, $pass_dir, $sample_name, "50ntNoC.aboveCutoff.txt", 0); 
+write_file(\@uncorrected_50nt_below_cutoff, $fail_dir, $sample_name, "50ntNoC.belowCutoff.txt", 0 );
+write_file(\%ac_missing_in_auc,             $fail_dir, $sample_name, "alleleErrC.passAltAlleleCheck.missingPrimersInAlleleNoC.txt", 1);
+write_file(\%auc_missing_in_ac,             $fail_dir, $sample_name, "alleleNoC.passAltAlleleCheck.missingPrimersInAlleleErrC.txt", 1);
 
 # read file subroutine to ingest input files
 sub read_file{
@@ -145,18 +171,31 @@ sub read_file{
 
 # write file subroutine, to create output files in the user-specified output directory
 sub write_file{
-	my ($data_to_write_ref, $dir, $prefix, $suffix) = @_;
-	my @data_to_write = @$data_to_write_ref;
+	my ($data_to_write_ref, $dir, $prefix, $suffix, $is_hash) = @_;
 
 	my $full_path_to_output_file = $dir . "/" . $prefix . "-" . $suffix;
-	print $full_path_to_output_file, "\n";
-	open(my $write_fh, ">", $full_path_to_output_file) || die "Unable to open filehandle for writing $dir\\$prefix$suffix:$!\n";
+	print "\t$full_path_to_output_file\n";
+	open(my $write_fh, ">", $full_path_to_output_file) || die "Unable to open filehandle for writing $dir/$prefix$suffix:$!\n";
 
-	for my $line (@data_to_write){
-		print $write_fh $line, "\n";
-	}
+	if ($is_hash){
+		my %data_to_write = %$data_to_write_ref;
+	
+		for my $key (sort keys %data_to_write){
+			my $line = $data_to_write{$key};
+			chomp $line;
+			print $write_fh $line, "\n";
+		}
+		close $write_fh;	
+	}else{
+		my @data_to_write = @$data_to_write_ref;
 
-	close $write_fh;
+		for my $line (@data_to_write){
+			chomp $line;
+			print $write_fh $line, "\n";
+		}
+
+		close $write_fh;
+	}	
 }
 
 # Function for comparison of the design file & a given file, which is either allele_corrected, or allele_uncorrected
@@ -229,7 +268,7 @@ sub alt_allele_check{
 
 				# 3. expected alt allele in secondary/tertiary/etc position
 				}elsif ( $alt =~m/($design_file{$chr."_".$loci}->{'alt'})/ ){
-					#TODO: need to modify:
+					# Need to modify:
 					# ALT (col 8)
 					# TOTAL DP (col 9)  = ref + ALT
 					# AAF (col 10)  = new ALT / new total DP = ((col 8)/ (col9))
@@ -308,9 +347,9 @@ sub alt_allele_check{
 }
 
 
-#TODO: need to rewrite this filtering function. Will repurpose the name of this function for filtering for passing read depth.
-#TODO: if corrected/uncorrected read depth total does not match -> throw out amplicon
-#TODO: if amplicon is thrown out, discard 50nt entries (NOT VARIANT)
+# this function for filtering for passing read depth.
+# if corrected/uncorrected read depth total does not match (aka both corrected/uncorrected are >=cutoff) -> throw out amplicon
+# if amplicon is thrown out, discard 50nt entries (NOT VARIANT)
 
 sub filter{
 	my ($allele_corrected_pass_ref, $allele_uncorrected_pass_ref, $corrected_50nt_ref, $uncorrected_50nt_ref, $cutoff, $print_if_debug) = @_;
@@ -343,10 +382,11 @@ sub filter{
 	# then for the discarded ones, remove 50nt as well
 
 	my %auc_above_cutoff; my %auc_below_cutoff; my %auc_missing_in_ac;
-	my @remove_from_50nt_files; # this means the amplicon was < cutoff in at least one of allele corrected/uncorrected
+	my %remove_from_50nt_files; # this means the amplicon was < cutoff in at least one of allele corrected/uncorrected
 
 	foreach my $line (@allele_uncorrected_pass){
 		my @temp_line = split("\t", $line);
+		chomp($line);
 		#print "$line\t$temp_line[8]\n" if $print_if_debug;
 
 		# if above cutoff, must check to see if allele_corrected is also above the cutoff for this amplicon
@@ -355,7 +395,7 @@ sub filter{
 			# allele uncorrected above cutoff, allele corrected below cutoff --> DISCARD
 			if ($ac_below_cutoff{$temp_line[37]}){
 				# add to remove_from_50nt_files
-				push (@remove_from_50nt_files, $temp_line[37]);
+				$remove_from_50nt_files{$temp_line[37]} = 1;
 				$auc_below_cutoff{$temp_line[37]}=$line;
 			# both above cutoff ---> KEEP
 			}elsif($ac_above_cutoff{$temp_line[37]}){
@@ -373,11 +413,11 @@ sub filter{
 
 			# allele uncorrected below cutoff, allele corrected below cutoff --> DISCARD
 			if ($ac_below_cutoff{$temp_line[37]}){
-				push(@remove_from_50nt_files, $temp_line[37]);
+				$remove_from_50nt_files{$temp_line[37]} = 1;
 				$auc_below_cutoff{$temp_line[37]}=$line;
 			# allele uncorrected below, allele corrected above cutoff ---> DISCARD
 			}elsif($ac_above_cutoff{$temp_line[37]}){
-				push(@remove_from_50nt_files, $temp_line[37]);
+				$remove_from_50nt_files{$temp_line[37]} = 1;
 				# remove from above cutoff array for allele corrected, as the allele uncorrected is below
 				my $to_keep = $ac_above_cutoff{$temp_line[37]};
 				delete $ac_above_cutoff{$temp_line[37]};
@@ -395,7 +435,7 @@ sub filter{
 
 	}
 
-	#TODO: check for primers that are in allele corrected data but not in allele uncorrected
+	# check for primers that are in allele corrected data but not in allele uncorrected
 	# shunt these to a bucket and print 'em out later
 	my %ac_missing_in_auc;
 	for my $primer (sort keys %ac_below_cutoff){
@@ -407,65 +447,67 @@ sub filter{
 	}	 
 
 
-	#TODO: remove the irrelevant lines from 50nt files
+	# remove the irrelevant lines (those corresponding to amplicons < the cutoff) from 50nt files
 	my @corrected_50nt_above_cutoff; my @corrected_50nt_below_cutoff;
 	my @uncorrected_50nt_above_cutoff; my @uncorrected_50nt_below_cutoff;
+	for my $c_50nt (@corrected_50nt){
+		my @temp_line = split("\t", $c_50nt);
+		if ($remove_from_50nt_files{$temp_line[37]}){
+			push (@corrected_50nt_below_cutoff, $c_50nt);
+		}else{
+			push (@corrected_50nt_above_cutoff, $c_50nt);
+		}		
+	}
 
-	# iterate through 50nt files for corrected and uncorrected
-	# remove lines that we discarded from ac and auc
-	# use @remove_from_50nt_files
-	#TODO TODO TODO
+	for my $uc_50nt (@uncorrected_50nt){
+		my @temp_line = split("\t", $uc_50nt);
+		if ($remove_from_50nt_files{$temp_line[37]}){
+			push(@uncorrected_50nt_below_cutoff, $uc_50nt);
+		}else{
+			push(@uncorrected_50nt_above_cutoff , $uc_50nt);
+		}
+	}
 
 
+	#TODO clean up below:
 	# table to check logic, make sure the numbers make sense
 	my $allele_corrected_size = $#allele_corrected_pass + 1; my $allele_corrected_pass_dp_above_cutoff_size = keys(%ac_above_cutoff); my $allele_corrected_pass_dp_below_cutoff_size = keys(%ac_below_cutoff); my $allele_corrected_pass_not_in_allele_uncorrected = keys(%ac_missing_in_auc);
 	print "\n\tSize of input allele corrected \"pass\" data to function:($allele_corrected_size)";
 	print "\n\tSize of allele corrected \"pass\" data above cutoff:($allele_corrected_pass_dp_above_cutoff_size)";
 	print "\n\tSize of allele corrected \"pass\" data below cutoff:($allele_corrected_pass_dp_below_cutoff_size)\n";
-	print "\t\t";
-	for my $ac_below (sort keys %ac_below_cutoff){
-		print "$ac_below";
-		print ", ";
-	}
-	print "\n\tSize of allele corrected \"pass\" data (primer IDs) that are not in allele uncorrected:($allele_corrected_pass_not_in_allele_uncorrected)\n";
-	print "\t\t";
-	for my $missing_primer (sort keys %ac_missing_in_auc){
-		print "$missing_primer";
-		print ", ";
-	}
-	print "\n\n";
+	print "\t\t", join (", ", sort keys %ac_below_cutoff), "\n";
+	print "\tSize of allele corrected \"pass\" data (primer IDs) that are not in allele uncorrected:($allele_corrected_pass_not_in_allele_uncorrected)\n";
+	print "\t\t", join(", ", sort keys %ac_missing_in_auc), "\n\n";
 	
 	
 	my $allele_uncorrected_size = $#allele_uncorrected_pass + 1; my $allele_uncorrected_pass_dp_above_cutoff_size = keys(%auc_above_cutoff); my $allele_uncorrected_pass_dp_below_cutoff_size = keys(%auc_below_cutoff); my $allele_uncorrected_pass_not_in_allele_corrected = keys(%auc_missing_in_ac);
 	print "\tSize of input allele uncorrected \"pass\" data to function:($allele_uncorrected_size)\n";
 	print "\tSize of allele uncorrected \"pass\" data above cutoff:($allele_uncorrected_pass_dp_above_cutoff_size)\n";
 	print "\tSize of allele uncorrected \"pass\" data below cutoff:($allele_uncorrected_pass_dp_below_cutoff_size)\n";
-	print "\t\t";
-	for my $below_cutoff (sort keys %auc_below_cutoff){
-		print "$below_cutoff";
-		print ", ";
-	}
-	print "\n";
-	print "\tSize of allele uncorrected \"pass\" data (primer IDs) that are not in allele corrected:($allele_uncorrected_pass_not_in_allele_corrected)\n";
-	print "\t\t";
-	for my $missing_primer (sort keys %auc_missing_in_ac){
-		print "$missing_primer";
-		print ", ";
-	}
-	print "\n\n";
-	my $remove_from_50nt_files_size = $#remove_from_50nt_files +1;
-	print "\tNumber of amplicons to remove:($remove_from_50nt_files_size)\n\n";
-	my $corrected_50nt_size = $#corrected_50nt + 1;
-	print "\tSize of input corrected 50nt data to function:($corrected_50nt_size)\n\n";
+	print "\t\t", join(", ", sort keys %auc_below_cutoff), "\n\n";
 
-	my $uncorrected_50nt_size = $#uncorrected_50nt + 1;
-	print "\tSize of input corrected 50nt data to function:($uncorrected_50nt_size)\n\n";
+	print "\tSize of allele uncorrected \"pass\" data (primer IDs) that are not in allele corrected:($allele_uncorrected_pass_not_in_allele_corrected)\n";
+	print "\t\t", join(", ", sort keys %auc_missing_in_ac), "\n\n";
+	
+	my $remove_from_50nt_files_size = keys(%remove_from_50nt_files);
+	print "\tNumber of amplicons to remove:($remove_from_50nt_files_size)\n";
+	print "\t\t", join(", ", sort keys(%remove_from_50nt_files)),"\n\n";
+
+	my $corrected_50nt_size = $#corrected_50nt + 1; my $corrected_50nt_above_cutoff_size = $#corrected_50nt_above_cutoff + 1;
+	my $corrected_50nt_below_cutoff_size = $#corrected_50nt_below_cutoff + 1;
+	print "\tSize of input corrected 50nt data to function:($corrected_50nt_size)\n";
+	print "\tSize of corrected 50nt data with only amplicon data above cutoff:($corrected_50nt_above_cutoff_size)\n";
+	print "\tSize of corrected 50nt data with only amplicon data below cutoff:($corrected_50nt_below_cutoff_size)\n\n";
+
+	my $uncorrected_50nt_size = $#uncorrected_50nt + 1; my $uncorrected_50nt_above_cutoff_size = $#uncorrected_50nt_above_cutoff + 1;
+	my $uncorrected_50nt_below_cutoff_size = $#uncorrected_50nt_below_cutoff + 1; 
+	print "\tSize of input uncorrected 50nt data to function:($uncorrected_50nt_size)\n";
+	print "\tSize of uncorrected 50nt data with only amplicon data above cutoff:($uncorrected_50nt_above_cutoff_size)\n";
+	print "\tSize of uncorrected 50nt data with only amplicon data below cutoff:($uncorrected_50nt_below_cutoff_size)\n\n";
 
 	# TODO:
 	# return data structures of interest, so we can print them out!
-	# @corrected_50nt_above_cutoff, @uncorrected_50nt_above_cutoff
-	# %allele_uncorrected_pass_dp_above_cutoff, %allele_corrected_pass_dp_above_cutoff
-	#return ();
+	return (\%ac_above_cutoff, \%ac_below_cutoff, \%auc_above_cutoff, \%auc_below_cutoff, \@corrected_50nt_above_cutoff, \@corrected_50nt_below_cutoff, \@uncorrected_50nt_above_cutoff, \@uncorrected_50nt_below_cutoff, \%ac_missing_in_auc, \%auc_missing_in_ac);
 
 }
 
