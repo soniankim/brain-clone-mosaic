@@ -85,17 +85,12 @@ my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = alt_allele_che
 print "Running filter function to discard allele corrected, allele uncorrected, 50nt corrected, and 50nt uncorrected data below the cutoff of $cutoff.\n";
 my (%ac_above_cutoff, %ac_below_cutoff, %auc_above_cutoff, %auc_below_cutoff, @corrected_50nt_above_cutoff, @corrected_50nt_below_cutoff, @uncorrected_50nt_above_cutoff, @uncorrected_50nt_below_cutoff, %ac_missing_in_auc, %auc_missing_in_ac);
 my ($ac_above_cutoff_ref, $ac_below_cutoff_ref, $auc_above_cutoff_ref, $auc_below_cutoff_ref, $corrected_50nt_above_cutoff_ref, $corrected_50nt_below_cutoff_ref, $uncorrected_50nt_above_cutoff_ref, $uncorrected_50nt_below_cutoff_ref, $ac_missing_in_auc_ref, $auc_missing_in_ac_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug);
-# return (%ac_above_cutoff, %ac_below_cutoff, %auc_above_cutoff, %auc_below_cutoff, @corrected_50nt_above_cutoff, @corrected_50nt_below_cutoff, @uncorrected_50nt_above_cutoff, @uncorrected_50nt_below_cutoff, %ac_missing_in_auc, %auc_missing_in_ac);
-%ac_above_cutoff = %$ac_above_cutoff_ref;
-%ac_below_cutoff = %$ac_below_cutoff_ref;
-%auc_above_cutoff = %$auc_above_cutoff_ref;
-%auc_below_cutoff = %$auc_below_cutoff_ref;
-@corrected_50nt_above_cutoff = @$corrected_50nt_above_cutoff_ref;
-@corrected_50nt_below_cutoff = @$corrected_50nt_below_cutoff_ref;
-@uncorrected_50nt_above_cutoff = @$uncorrected_50nt_above_cutoff_ref;
-@uncorrected_50nt_below_cutoff = @$uncorrected_50nt_below_cutoff_ref;
-%ac_missing_in_auc = %$ac_missing_in_auc_ref;
-%auc_missing_in_ac = %$auc_missing_in_ac_ref;
+
+%ac_above_cutoff = %$ac_above_cutoff_ref; %ac_below_cutoff = %$ac_below_cutoff_ref;
+%auc_above_cutoff = %$auc_above_cutoff_ref; %auc_below_cutoff = %$auc_below_cutoff_ref;
+@corrected_50nt_above_cutoff = @$corrected_50nt_above_cutoff_ref; @corrected_50nt_below_cutoff = @$corrected_50nt_below_cutoff_ref;
+@uncorrected_50nt_above_cutoff = @$uncorrected_50nt_above_cutoff_ref; @uncorrected_50nt_below_cutoff = @$uncorrected_50nt_below_cutoff_ref;
+%ac_missing_in_auc = %$ac_missing_in_auc_ref; %auc_missing_in_ac = %$auc_missing_in_ac_ref;
 
 print "List of output files:\n";
 # write the files
@@ -130,6 +125,9 @@ sub read_file{
 
 	while (my $line =<$read_fh>){
 		chomp $line;
+
+		# for DESIGN FILE, use a hash as this data will be searched
+		# everything else is in arrays.
 
 		# DESIGN FILE, columns of interest (indexing by 0 here):
 		# 2: Chromosome
@@ -170,6 +168,8 @@ sub read_file{
 }
 
 # write file subroutine, to create output files in the user-specified output directory
+# input:
+# data to write, directory to write to, prefix of file (the sample name), the suffix (what describes the content of the file), and if this is a hash or not
 sub write_file{
 	my ($data_to_write_ref, $dir, $prefix, $suffix, $is_hash) = @_;
 
@@ -505,7 +505,6 @@ sub filter{
 	print "\tSize of uncorrected 50nt data with only amplicon data above cutoff:($uncorrected_50nt_above_cutoff_size)\n";
 	print "\tSize of uncorrected 50nt data with only amplicon data below cutoff:($uncorrected_50nt_below_cutoff_size)\n\n";
 
-	# TODO:
 	# return data structures of interest, so we can print them out!
 	return (\%ac_above_cutoff, \%ac_below_cutoff, \%auc_above_cutoff, \%auc_below_cutoff, \@corrected_50nt_above_cutoff, \@corrected_50nt_below_cutoff, \@uncorrected_50nt_above_cutoff, \@uncorrected_50nt_below_cutoff, \%ac_missing_in_auc, \%auc_missing_in_ac);
 
