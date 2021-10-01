@@ -286,16 +286,16 @@ sub alt_allele_check{
 					# pull out correct alt counts based upon the position of the expected alt allele in col 8. So in the AD column, the correct alt counts will be position plus one (as reference is listed first in the AD string)
 					my $correct_alt_counts = $temp_for_alt_counts[$position + 1];
 					my $recalc_dp = $temp_for_alt_counts[0] + $correct_alt_counts; # ref + alt
-					my $aaf = ($correct_alt_counts/ $recalc_dp);
-					my $percent_nt_qc = ($recalc_dp / $temp_line[5]);
+					my $aaf = sprintf( "%.5e", ($correct_alt_counts/ $recalc_dp));
+					my $percent_nt_qc = sprintf( "%.5e", ($recalc_dp / $temp_line[5]));
 
 					my @end_of_line = @temp_line[11...38];
 					my $end_of_line = join("\t", @end_of_line) ;
 					my $modified_line = "$chr\t$loci\t$temp_line[2]\t$ref\t$alt\t$temp_line[5]\tAD=$AD\t$correct_alt_counts\t$recalc_dp\t$aaf\t$percent_nt_qc\t$end_of_line\n";
 
-					#print $modified_line, "\n\n" if $print_if_debug;
+					#print $line, "\n", $modified_line if $print_if_debug;
 					push(@pass, $modified_line);
-					#print "PASS due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n" if $print_if_debug;
+					#print "PASS due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n\n" if $print_if_debug;
 
 				# check for alternative alleles that are not the expected one (e.g. not in the design file)
 				# modify alt, total dp, aaf if so
@@ -309,10 +309,11 @@ sub alt_allele_check{
 					# % reads that are good quality (%nt QC), put this to 0??? Not sure yet
 					my $AD = $temp_line[6];
 					my $ref_count_from_AD = $1 if $AD =~m/AD=(\d+),/;
-					my $percent_nt_qc = $ref_count_from_AD / $temp_line[5];
+					my $percent_nt_qc = sprintf( "%.5e", ($ref_count_from_AD / $temp_line[5]));
 					my @end_of_line = @temp_line[11...38];
 					my $end_of_line = join("\t", @end_of_line);
-					my $modified_line = "$chr\t$loci\t$temp_line[2]\t$ref\t$alt\t$temp_line[5]\t$AD\t0\t$ref_count_from_AD\t0\t$temp_line[10]\t$end_of_line\n";
+					my $modified_line = "$chr\t$loci\t$temp_line[2]\t$ref\t$alt\t$temp_line[5]\t$AD\t0\t$ref_count_from_AD\t0\t$percent_nt_qc\t$end_of_line\n";
+					#print $line, "\n\n" if $print_if_debug;
 					#print $modified_line,"\n\n" if $print_if_debug;
 
 					# save modified line
