@@ -80,11 +80,15 @@ print "Running alt allele check for allele uncorrected file.\n";
 my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = alt_allele_check(\%oligo_target, \@allele_uncorrected, $debug);
 @allele_uncorrected_pass = @$allele_uncorrected_pass_ref; @allele_uncorrected_fail = @$allele_uncorrected_fail_ref;
 
+# collate primers that failed during the alt allele check (comparison with the design file)
+my ($collated_failed_primers_ref) = find_primers_that_conflict_with_design_file(\@allele_corrected_fail, \@allele_uncorrected_fail, $debug);
+my @fail_primers; @fail_primers = @$collated_failed_primers_ref;
+
 # send allele corrected + uncorrected data from the alt_allele_check function to the filtering function
 # also send the 50 nt files to the filtering function
 print "Running filter function to discard allele corrected, allele uncorrected, 50nt corrected, and 50nt uncorrected data below the cutoff of $cutoff.\n";
 my (%ac_above_cutoff, %ac_below_cutoff, %auc_above_cutoff, %auc_below_cutoff, @corrected_50nt_above_cutoff, @corrected_50nt_below_cutoff, @uncorrected_50nt_above_cutoff, @uncorrected_50nt_below_cutoff, %ac_missing_in_auc, %auc_missing_in_ac);
-my ($ac_above_cutoff_ref, $ac_below_cutoff_ref, $auc_above_cutoff_ref, $auc_below_cutoff_ref, $corrected_50nt_above_cutoff_ref, $corrected_50nt_below_cutoff_ref, $uncorrected_50nt_above_cutoff_ref, $uncorrected_50nt_below_cutoff_ref, $ac_missing_in_auc_ref, $auc_missing_in_ac_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, $cutoff, $debug);
+my ($ac_above_cutoff_ref, $ac_below_cutoff_ref, $auc_above_cutoff_ref, $auc_below_cutoff_ref, $corrected_50nt_above_cutoff_ref, $corrected_50nt_below_cutoff_ref, $uncorrected_50nt_above_cutoff_ref, $uncorrected_50nt_below_cutoff_ref, $ac_missing_in_auc_ref, $auc_missing_in_ac_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, \@fail_primers, $cutoff, $debug);
 
 %ac_above_cutoff = %$ac_above_cutoff_ref; %ac_below_cutoff = %$ac_below_cutoff_ref;
 %auc_above_cutoff = %$auc_above_cutoff_ref; %auc_below_cutoff = %$auc_below_cutoff_ref;
@@ -348,19 +352,40 @@ sub alt_allele_check{
 	return (\@pass, \@fail);
 }
 
+sub find_primers_that_conflict_with_design_file {
+	
+	my ($allele_corrected_fail_ref, $allele_uncorrected_fail_ref, $print_if_debug) = @_;
+
+	# de-reference the references that were passed to the subroutine
+	my @allele_corrected_fail = @$allele_corrected_fail_ref;
+	my @allele_uncorrected_fail = @$allele_uncorrected_fail_ref;
+
+	my @megaarray = (@allele_corrected_fail, @allele_uncorrected_fail);
+
+	my @primers_to_remove;
+	for my $line (@megaarray){
+		#print $line if $print_if_debug;
+		my @temp_array = split("\t", $line);
+		#print $temp_array[37], "\n" if $print_if_debug;
+		push @primers_to_remove, $temp_array[37];
+	}
+	return \@primers_to_remove;
+}
+
 
 # this function for filtering for passing read depth.
 # if corrected/uncorrected read depth total does not match (aka both corrected/uncorrected are >=cutoff) -> throw out amplicon
 # if amplicon is thrown out, discard 50nt entries (NOT VARIANT)
 
 sub filter{
-	my ($allele_corrected_pass_ref, $allele_uncorrected_pass_ref, $corrected_50nt_ref, $uncorrected_50nt_ref, $cutoff, $print_if_debug) = @_;
+	my ($allele_corrected_pass_ref, $allele_uncorrected_pass_ref, $corrected_50nt_ref, $uncorrected_50nt_ref, $fail_primers_ref, $cutoff, $print_if_debug) = @_;
 
 	# de-reference the references that were passed to the subroutine
 	my @allele_corrected_pass = @$allele_corrected_pass_ref;
 	my @allele_uncorrected_pass = @$allele_uncorrected_pass_ref;
 	my @corrected_50nt = @$corrected_50nt_ref;
 	my @uncorrected_50nt = @$uncorrected_50nt_ref;
+	my @fail_primers = @$fail_primers_ref;
 
 	# process allele corrected "pass" data and segment data into >= DP cutoff, and < DP cutoff
 	my %ac_above_cutoff; my %ac_below_cutoff;
@@ -431,6 +456,7 @@ sub filter{
 				print "\tError in filter function. Missing primer $temp_line[37] for allele corrected\n" unless $ac_below_cutoff{$temp_line[37]} || $ac_above_cutoff{$temp_line[37]};
 				print "Unspecified error in filter function" if $ac_below_cutoff{$temp_line[37]} || $ac_above_cutoff{$temp_line[37]};
 				$auc_missing_in_ac{$temp_line[37]} = $line;
+				$remove_from_50nt_files{$temp_line[37]} = 1;
 			}
 
 		}
@@ -445,9 +471,14 @@ sub filter{
 			print "\tError in filter function. Missing primer $primer for allele uncorrected\n";
 			$ac_missing_in_auc{$primer} = $ac_below_cutoff{$primer};
 			delete $ac_below_cutoff{$primer};
+			$remove_from_50nt_files{$primer} = 1;
 		}
 	}	 
 
+	# add in all of the primers that previously failed due to design file issues to the "remove" bucket for the 50nt files:
+	for my $primer (@fail_primers){
+		$remove_from_50nt_files{$primer} = 1;
+	}
 
 	# remove the irrelevant lines (those corresponding to amplicons < the cutoff) from 50nt files
 	my @corrected_50nt_above_cutoff; my @corrected_50nt_below_cutoff;
