@@ -137,8 +137,8 @@ sub read_file{
 		if ($is_this_oligo_target_file){
 			my @temp = split(/\t/, $line);
 
-			my $chr = $temp[2]; my $loci = $temp[3]; my $ref = $temp[5]; my $alt = $temp[6];
-			my $key = $temp[2] ."_" . $loci;
+			my $primer = $temp[0]; my $chr = $temp[2]; my $loci = $temp[3]; my $ref = $temp[5]; my $alt = $temp[6];
+			my $key = $temp[2] ."_" . $loci ."_" . $primer;
 
 			# if we already have this loci (chromosome + loci combo stored in $key) in the %design_file hash,
 			# check for errors. Errors include same chr+loci, but different ref alleles, OR same chr+loci, but different primary alt alleles.
@@ -239,9 +239,10 @@ sub alt_allele_check{
 		# 10: %nt QC
 
 		my $chr = $temp_line[0]; my $loci = $temp_line[1]; my $ref = $temp_line[3]; my $alt = $temp_line[4];
+		my $primer = $temp_line[37];
 
 		# check that we do have this chromosome + loci combo in the design file
-		if ($design_file{$chr."_".$loci}){
+		if ($design_file{$chr."_".$loci."_".$primer}){
 			# going to extract the first character from the alt string to get the primary alt allele.
 			# alt column could be only one character, such as A
 			# it also could be multiple comma separated characters, such as T,C,G
@@ -253,7 +254,7 @@ sub alt_allele_check{
 			#print $line,"\n" if $print_if_debug;
 
 			# verify reference in this line is the same as in the design file:
-			if($design_file{$chr."_".$loci}->{'ref'} eq $ref){
+			if($design_file{$chr."_".$loci."_".$primer}->{'ref'} eq $ref){
 
 				# ALT ALLELE CHECK CONDITIONS:
 				# 1. ref allele only
@@ -262,12 +263,12 @@ sub alt_allele_check{
 					#print "PASS due to reference match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and alt is $alt\n\n" if $print_if_debug;
 
 				# 2. expected alt allele in primary allele position
-				}elsif ( $design_file{$chr."_".$loci}->{'alt'} eq $primary_alt ){
+				}elsif ( $design_file{$chr."_".$loci."_".$primer}->{'alt'} eq $primary_alt ){
 					push(@pass, $line);
 					#print "PASS due to primary alt match: ", $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\t", "and\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$primary_alt\t $alt\n\n" if $print_if_debug;
 
 				# 3. expected alt allele in secondary/tertiary/etc position
-				}elsif ( $alt =~m/($design_file{$chr."_".$loci}->{'alt'})/ ){
+				}elsif ( $alt =~m/($design_file{$chr."_".$loci."_".$primer}->{'alt'})/ ){
 					# Need to modify:
 					# ALT (col 8)
 					# TOTAL DP (col 9)  = ref + ALT
@@ -277,7 +278,7 @@ sub alt_allele_check{
 					my $alt_tmp = $alt;
 					$alt_tmp =~ tr/,//d; # remove commas to get position
 							     # used to pull out correct alt counts
-					my $position = index($alt_tmp, $design_file{$chr."_".$loci}->{'alt'}) ;
+					my $position = index($alt_tmp, $design_file{$chr."_".$loci."_".$primer}->{'alt'}) ;
 
 					my $AD = $temp_line[6];
 					$AD =~ tr/AD=//d;
@@ -301,7 +302,7 @@ sub alt_allele_check{
 				# modify alt, total dp, aaf if so
 
 				# 4. alternative alleles that are not the expected one (e.g. not in the design file)
-				}elsif( $alt !~/$design_file{$chr."_".$loci}->{'alt'}/ ){
+				}elsif( $alt !~/$design_file{$chr."_".$loci."_".$primer}->{'alt'}/ ){
 					#print "PASS (needs modifications) due to: ",  $design_file{$chr."_".$loci}->{'ref'}, "\t", $ref, "\tand\t", $design_file{$chr."_".$loci}->{'alt'}, "\t$alt\n" if $print_if_debug;
 					# Alt goes to 0
 					# Total dp is (original total dp – original alt) or AD=(probably easier)
@@ -331,15 +332,15 @@ sub alt_allele_check{
 			}else{
 				print "Reference listed for $chr $loci in the following line does not match the ref in the design file.\n";
 				push (@fail, $line);
-				print "FAIL due to different ref in design file for $chr $loci. DF has  ", $design_file{$chr."_".$loci}->{'ref'}, "  and this line has $ref\n" if $print_if_debug;
+				print "FAIL due to different ref in design file for $chr $loci $primer. DF has  ", $design_file{$chr."_".$loci."_".$primer}->{'ref'}, "  and this line has $ref\n" if $print_if_debug;
 			}
 
 
 		}else{
 			# warn if we do not find a matching chr + loci combination in the design file.
-			print "Chromosome and loci combination $chr $loci not found in design file.\n";
+			print "Chromosome, loci, and primer combination $chr $loci $primer not found in design file.\n";
 			push(@fail, $line);
-			print "FAIL due to: $chr & $loci missing in design file.\n" if $print_if_debug;
+			print "FAIL due to: $chr & $loci & $primer missing in design file.\n" if $print_if_debug;
 		}
 	} #foreach close
 	my $input_array_size = $#file_to_compare + 1; my $pass_array_size = $#pass +1; my $fail_array_size = $#fail +1;
