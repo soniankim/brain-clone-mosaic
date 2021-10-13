@@ -50,14 +50,14 @@ my (%oligo_target, @allele_corrected, @allele_uncorrected, @corrected_50nt, @unc
 
 # Tell the user what files & parameters we are using
 print "\nRunning verify_primary_alt_allele.pl with the following parameters:\n\n";
-printf("%-25s %-150s\n",   "Oligo design file:",       $oligo_target_file);
-printf("%-25s %-150s\n",   "Allele corrected file:",   $allele_corrected);
-printf("%-25s %-150s\n",   "Allele uncorrected file:", $allele_uncorrected);
-printf("%-25s %-150s\n",   "Corrected 50nt file:",     $corrected_50nt);
-printf("%-25s %-150s\n",   "Uncorrected 50nt file:",   $uncorrected_50nt);
-printf("%-25s %-150s\n",   "Output directory:",        $output_dir);
-printf("%-25s %-150s\n",   "Cutoff:",                  $cutoff);
-printf("%-25s %-150s\n\n", "Sample name:",             $sample_name);
+printf("%-25s %-150s",   "Oligo design file:",       $oligo_target_file);
+printf("%-25s %-150s",   "Allele corrected file:",   $allele_corrected);
+printf("%-25s %-150s",   "Allele uncorrected file:", $allele_uncorrected);
+printf("%-25s %-150s",   "Corrected 50nt file:",     $corrected_50nt);
+printf("%-25s %-150s",   "Uncorrected 50nt file:",   $uncorrected_50nt);
+printf("%-25s %-150s",   "Output directory:",        $output_dir);
+printf("%-25s %-150s",   "Cutoff:",                  $cutoff);
+printf("%-25s %-150s\n", "Sample name:",             $sample_name);
 
 # read in files and save to appropriate data structures
 %oligo_target       = read_file($oligo_target_file,  1); # use hash as this data will be searched, everything else is in arrays.
@@ -71,22 +71,30 @@ printf("%-25s %-150s\n\n", "Sample name:",             $sample_name);
 my (@allele_corrected_pass, @allele_corrected_fail, @allele_uncorrected_pass, @allele_uncorrected_fail);
 
 # send allele_corrected file to alternate allele check function
-print "Running alt allele check for allele corrected file.\n";
+print "\nRunning alt allele check to compare with the design file:\n\tAllele Corrected\n";
 my ($allele_corrected_pass_ref, $allele_corrected_fail_ref)  = alt_allele_check(\%oligo_target, \@allele_corrected, $debug);
 @allele_corrected_pass = @$allele_corrected_pass_ref; @allele_corrected_fail = @$allele_corrected_fail_ref;
 
 # send allele uncorrected file to alternate allele check function
-print "Running alt allele check for allele uncorrected file.\n";
+print "\tAllele Uncorrected\n";
 my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = alt_allele_check(\%oligo_target, \@allele_uncorrected, $debug);
 @allele_uncorrected_pass = @$allele_uncorrected_pass_ref; @allele_uncorrected_fail = @$allele_uncorrected_fail_ref;
 
+print "\n\t*\"Failing\" data includes: matching chr + loci + primer in the the design file with either a reference match, the expected primary alt allele, the expected alt allele in a non-primary position, and alternative alleles that are not the expected one. For the last two cases, modification of data will be done.";
+print "\n\t*\"Passing\" data includes: no matching chr + loci + primer in the design file, or wrong reference for a chr + loci + primer found in the design file.\n\n";
+
 # collate primers that failed during the alt allele check (comparison with the design file)
+print "Running function to collate the list of primers that conflict that the design file, for both allele corrected and allele uncorrected.\n";
 my ($collated_failed_primers_ref) = find_primers_that_conflict_with_design_file(\@allele_corrected_fail, \@allele_uncorrected_fail, $debug);
 my @fail_primers; @fail_primers = @$collated_failed_primers_ref;
+my $fail_primers_size = $#fail_primers + 1;
+print "\tNumber of primers to remove: $fail_primers_size\n" if @fail_primers;
+print "\t\t",join(", ", sort @fail_primers),"\n\n";
+print "\tNo primers found that conflict with the design file.\n\n" unless @fail_primers;
 
 # send allele corrected + uncorrected data from the alt_allele_check function to the filtering function
 # also send the 50 nt files to the filtering function
-print "Running filter function to discard allele corrected, allele uncorrected, 50nt corrected, and 50nt uncorrected data below the cutoff of $cutoff.\n";
+print "Running filter function to discard allele corrected, allele uncorrected, 50nt corrected, and 50nt uncorrected data below the cutoff of $cutoff and/or that conflicts with the design file.\n";
 my (%ac_above_cutoff, %ac_below_cutoff, %auc_above_cutoff, %auc_below_cutoff, @corrected_50nt_above_cutoff, @corrected_50nt_below_cutoff, @uncorrected_50nt_above_cutoff, @uncorrected_50nt_below_cutoff, %ac_missing_in_auc, %auc_missing_in_ac);
 my ($ac_above_cutoff_ref, $ac_below_cutoff_ref, $auc_above_cutoff_ref, $auc_below_cutoff_ref, $corrected_50nt_above_cutoff_ref, $corrected_50nt_below_cutoff_ref, $uncorrected_50nt_above_cutoff_ref, $uncorrected_50nt_below_cutoff_ref, $ac_missing_in_auc_ref, $auc_missing_in_ac_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, \@fail_primers, $cutoff, $debug);
 
@@ -161,6 +169,7 @@ sub read_file{
 		# then just add each line of the input file to an array
 		# and then return the file contents array
 		}else{
+			chomp $line;
 			push(@file_contents, $line);
 		}
 
@@ -326,29 +335,29 @@ sub alt_allele_check{
 
 				# catch for any other condition we were not expecting
 				}else{
-					print "Exception in logic found in alt_allele_check function, due to the following line!\n$line\n";
+					print "\tException in logic found in alt_allele_check function, due to the following line!\n$line\n";
 					push(@fail, $line);
-					print "FAIL due to a condition that is not covered by the logic in the alt_allele_check function.\n" if $print_if_debug;
+					print "\tFAIL due to a condition that is not covered by the logic in the alt_allele_check function.\n" if $print_if_debug;
 				}
 
 
 			# reference in this line IS NOT the same as in the design file, yield an error:
 			}else{
-				print "Reference listed for $chr $loci in the following line does not match the ref in the design file.\n";
+				print "\tReference listed for chromosome $chr loci $loci primer $primer does not match the ref in the design file.\n";
 				push (@fail, $line);
-				print "FAIL due to different ref in design file for $chr $loci $primer. DF has  ", $design_file{$chr."_".$loci."_".$primer}->{'ref'}, "  and this line has $ref\n" if $print_if_debug;
+				print "\tFAIL due to different ref in design file for chromosome $chr loci $loci primer $primer. DF has  ", $design_file{$chr."_".$loci."_".$primer}->{'ref'}, "  and this line has $ref\n" if $print_if_debug;
 			}
 
 
 		}else{
 			# warn if we do not find a matching chr + loci combination in the design file.
-			print "Chromosome, loci, and primer combination $chr $loci $primer not found in design file.\n";
+			print "\tChromosome, loci, and primer combination $chr $loci $primer not found in design file.\n";
 			push(@fail, $line);
-			print "FAIL due to: $chr & $loci & $primer missing in design file.\n" if $print_if_debug;
+			print "\tFAIL due to: chromosome $chr & loci $loci & primer $primer missing in design file.\n" if $print_if_debug;
 		}
 	} #foreach close
 	my $input_array_size = $#file_to_compare + 1; my $pass_array_size = $#pass +1; my $fail_array_size = $#fail +1;
-	print "\tSize of input data to function:($input_array_size)\n\tSize of output \"passing\" data:($pass_array_size)\n\tSize of output \"failing\" data:($fail_array_size)\n\n";
+	print "\t\tSize of input data to function:($input_array_size)\n\t\tSize of output \"passing\" data:($pass_array_size)\n\t\tSize of output \"failing\" data:($fail_array_size)\n\n";
 	return (\@pass, \@fail);
 }
 
@@ -432,6 +441,7 @@ sub filter{
 				print "\tError in filter function. Missing primer $temp_line[37] for allele corrected\n" unless $ac_above_cutoff{$temp_line[37]} || $ac_below_cutoff{$temp_line[37]};
 				print "Unspecified error in filter function" if $ac_above_cutoff{$temp_line[37]} || $ac_below_cutoff{$temp_line[37]};
 				$auc_missing_in_ac{$temp_line[37]} = $line;
+				$remove_from_50nt_files{$temp_line[37]} = 1;
 			}
 
 		# allele uncorrected below cutoff:
@@ -505,38 +515,45 @@ sub filter{
 	#TODO clean up below:
 	# table to check logic, make sure the numbers make sense
 	my $allele_corrected_size = $#allele_corrected_pass + 1; my $allele_corrected_pass_dp_above_cutoff_size = keys(%ac_above_cutoff); my $allele_corrected_pass_dp_below_cutoff_size = keys(%ac_below_cutoff); my $allele_corrected_pass_not_in_allele_uncorrected = keys(%ac_missing_in_auc);
-	print "\n\tSize of input allele corrected \"pass\" data to function:($allele_corrected_size)";
-	print "\n\tSize of allele corrected \"pass\" data above cutoff:($allele_corrected_pass_dp_above_cutoff_size)";
-	print "\n\tSize of allele corrected \"pass\" data below cutoff:($allele_corrected_pass_dp_below_cutoff_size)\n";
-	print "\t\t", join (", ", sort keys %ac_below_cutoff), "\n";
-	print "\tSize of allele corrected \"pass\" data (primer IDs) that are not in allele uncorrected:($allele_corrected_pass_not_in_allele_uncorrected)\n";
-	print "\t\t", join(", ", sort keys %ac_missing_in_auc), "\n\n";
+	print "\n\tAllele Corrected";
+	print "\n\t\tSize of \"pass\" data sent to function:($allele_corrected_size)";
+	print "\n\t\tSize of \"pass\" data above cutoff:($allele_corrected_pass_dp_above_cutoff_size)";
+	print "\n\t\tSize of \"pass\" data below cutoff or its uncorrected mate below cutoff:($allele_corrected_pass_dp_below_cutoff_size), specific primers:\n";
+	print "\t\t\t", join (", ", sort keys %ac_below_cutoff), "\n";
+	print "\t\tSize of \"pass\" data (primer IDs) that are not in allele uncorrected:($allele_corrected_pass_not_in_allele_uncorrected), specific primers:\n";
+	print "\t\t\t", join(", ", sort keys %ac_missing_in_auc), "\n\n";
 	
 	
 	my $allele_uncorrected_size = $#allele_uncorrected_pass + 1; my $allele_uncorrected_pass_dp_above_cutoff_size = keys(%auc_above_cutoff); my $allele_uncorrected_pass_dp_below_cutoff_size = keys(%auc_below_cutoff); my $allele_uncorrected_pass_not_in_allele_corrected = keys(%auc_missing_in_ac);
-	print "\tSize of input allele uncorrected \"pass\" data to function:($allele_uncorrected_size)\n";
-	print "\tSize of allele uncorrected \"pass\" data above cutoff:($allele_uncorrected_pass_dp_above_cutoff_size)\n";
-	print "\tSize of allele uncorrected \"pass\" data below cutoff:($allele_uncorrected_pass_dp_below_cutoff_size)\n";
-	print "\t\t", join(", ", sort keys %auc_below_cutoff), "\n\n";
+	print "\tAllele Uncorrected\n";
+	print "\t\tSize of \"pass\" data to function:($allele_uncorrected_size)\n";
+	print "\t\tSize of \"pass\" data above cutoff:($allele_uncorrected_pass_dp_above_cutoff_size)\n";
+	print "\t\tSize of \"pass\" data below cutoff or its uncorrected mate below cutoff:($allele_uncorrected_pass_dp_below_cutoff_size), specific primers:\n";
+	print "\t\t\t", join(", ", sort keys %auc_below_cutoff), "\n";
 
-	print "\tSize of allele uncorrected \"pass\" data (primer IDs) that are not in allele corrected:($allele_uncorrected_pass_not_in_allele_corrected)\n";
-	print "\t\t", join(", ", sort keys %auc_missing_in_ac), "\n\n";
+	print "\t\tSize of \"pass\" data (primer IDs) that are not in allele corrected:($allele_uncorrected_pass_not_in_allele_corrected), specific primers:\n";
+	print "\t\t\t", join(", ", sort keys %auc_missing_in_ac), "\n\n";
 	
 	my $remove_from_50nt_files_size = keys(%remove_from_50nt_files);
-	print "\tNumber of amplicons to remove:($remove_from_50nt_files_size)\n";
-	print "\t\t", join(", ", sort keys(%remove_from_50nt_files)),"\n\n";
+	print "\tPrimers to Remove\n";
+	print "\t\tNumber of amplicons to remove:($remove_from_50nt_files_size), specific primers:\n";
+	print "\t\t\t", join(", ", sort keys(%remove_from_50nt_files)),"\n\n";
+	print "\t\t*Primers to remove includes primers below cutoff AND/OR \"missing\" in at least one of allele corrected/uncorrected,\n";
+	print "\t\tAND/OR primers that do not match the design file (reference mismatch, or the chr + loci + primer ID combo not found in DF).\n\n";
 
 	my $corrected_50nt_size = $#corrected_50nt + 1; my $corrected_50nt_above_cutoff_size = $#corrected_50nt_above_cutoff + 1;
 	my $corrected_50nt_below_cutoff_size = $#corrected_50nt_below_cutoff + 1;
-	print "\tSize of input corrected 50nt data to function:($corrected_50nt_size)\n";
-	print "\tSize of corrected 50nt data with only amplicon data above cutoff:($corrected_50nt_above_cutoff_size)\n";
-	print "\tSize of corrected 50nt data with only amplicon data below cutoff:($corrected_50nt_below_cutoff_size)\n\n";
+	print "\t50nt Error Corrected\n";
+	print "\t\tSize of input data to function:($corrected_50nt_size)\n";
+	print "\t\tSize of only data representing primers \"to keep\":($corrected_50nt_above_cutoff_size)\n";
+	print "\t\tSize of only data representing primers \"to remove\":($corrected_50nt_below_cutoff_size)\n\n";
 
 	my $uncorrected_50nt_size = $#uncorrected_50nt + 1; my $uncorrected_50nt_above_cutoff_size = $#uncorrected_50nt_above_cutoff + 1;
 	my $uncorrected_50nt_below_cutoff_size = $#uncorrected_50nt_below_cutoff + 1; 
-	print "\tSize of input uncorrected 50nt data to function:($uncorrected_50nt_size)\n";
-	print "\tSize of uncorrected 50nt data with only amplicon data above cutoff:($uncorrected_50nt_above_cutoff_size)\n";
-	print "\tSize of uncorrected 50nt data with only amplicon data below cutoff:($uncorrected_50nt_below_cutoff_size)\n\n";
+	print "\t50nt Uncorrected\n";
+	print "\t\tSize of input data to function:($uncorrected_50nt_size)\n";
+	print "\t\tSize of only data representing primers \"to keep\":($uncorrected_50nt_above_cutoff_size)\n";
+	print "\t\tSize of only data representing primers \"to remove\":($uncorrected_50nt_below_cutoff_size)\n\n";
 
 	# return data structures of interest, so we can print them out!
 	return (\%ac_above_cutoff, \%ac_below_cutoff, \%auc_above_cutoff, \%auc_below_cutoff, \@corrected_50nt_above_cutoff, \@corrected_50nt_below_cutoff, \@uncorrected_50nt_above_cutoff, \@uncorrected_50nt_below_cutoff, \%ac_missing_in_auc, \%auc_missing_in_ac);
