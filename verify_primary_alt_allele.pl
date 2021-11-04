@@ -50,13 +50,13 @@ my (%oligo_target, @allele_corrected, @allele_uncorrected, @corrected_50nt, @unc
 
 # Tell the user what files & parameters we are using
 print "\nRunning verify_primary_alt_allele.pl with the following parameters:\n\n";
-printf("%-25s %-150s",   "Oligo design file:",       $oligo_target_file);
-printf("%-25s %-150s",   "Allele corrected file:",   $allele_corrected);
-printf("%-25s %-150s",   "Allele uncorrected file:", $allele_uncorrected);
-printf("%-25s %-150s",   "Corrected 50nt file:",     $corrected_50nt);
-printf("%-25s %-150s",   "Uncorrected 50nt file:",   $uncorrected_50nt);
-printf("%-25s %-150s",   "Output directory:",        $output_dir);
-printf("%-25s %-150s",   "Cutoff:",                  $cutoff);
+printf("%-25s %-150s\n",   "Oligo design file:",       $oligo_target_file);
+printf("%-25s %-150s\n",   "Allele corrected file:",   $allele_corrected);
+printf("%-25s %-150s\n",   "Allele uncorrected file:", $allele_uncorrected);
+printf("%-25s %-150s\n",   "Corrected 50nt file:",     $corrected_50nt);
+printf("%-25s %-150s\n",   "Uncorrected 50nt file:",   $uncorrected_50nt);
+printf("%-25s %-150s\n",   "Output directory:",        $output_dir);
+printf("%-25s %-150s\n",   "Cutoff:",                  $cutoff);
 printf("%-25s %-150s\n", "Sample name:",             $sample_name);
 
 # read in files and save to appropriate data structures
