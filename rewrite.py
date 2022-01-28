@@ -76,11 +76,14 @@ if __name__ == "__main__":
 
 	
 	# start pre-processing/filtering step
-	_, _ = alt_allele_check(uncorrected_allele, corrected_allele)
-	filtered_uncorrected_allele, filtered_corrected_allele, filtered_uncorrected_50nt, filtered_corrected_50nt = do_something()
+	#TODO: alternative naming for "pass" and "fail". These don't accurately reflect the contents of these variables
+	#TODO: actually implement the below functions, lol
+	corrected_allele_pass, corrected_allele_fail     = alt_allele_check(design_file_dict, corrected_allele)
+	uncorrected_allele_pass, uncorrected_allele_fail = alt_allele_check(design_file_dict, uncorrected_allele)
+	
+	collated_failed_primers = find_conflicting_primers(corrected_allele_fail, uncorrected_allele_fail)
 
-
-
+	filtered_corrected_allele, filtered_uncorrected_allele, filtered_corrected_50nt, filtered_uncorrected_50nt, allele_corrected_missing_in_uncorrected, allele_uncorrected_missing_in_corrected  = filter(corrected_allele_pass, uncorrected_allele_pass, corrected_50nt, uncorrected_50nt, collated_failed_primers, cutoff)
 
 
 
