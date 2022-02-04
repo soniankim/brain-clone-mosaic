@@ -4,6 +4,7 @@
 import argparse
 import csv
 import os
+import pandas as pd
 from pathlib import Path
 
 
@@ -13,7 +14,7 @@ def read_file(filename, hash=False):
 	"""
 
 	temp_struct = ""
-	if hash = True:
+	if hash:
 		temp_struct = {}
 		with open(filename, 'r') as f:
 			for line in f:
@@ -26,9 +27,30 @@ def read_file(filename, hash=False):
 				temp_struct[key]["primer_code"] = fields[0]
 				temp_struct[key]["primer_name"] = fields[1]
 	else:
-		temp_struct = csv.read(filename, delimiter='\t')
-		
+		# need to remember that the input files should not have placeholders or have duplicate columns
+		temp_struct = pd.read_csv(filename, delimiter='\t', header=None)
+		#TODO: come to consensus on col names and verify them with Sonia
+		temp_struct.columns = ['chromosome', 'site1', 'site2', 'ref', 'alt', 'total_reads', 'ad', 'altreads', 'dpreads', 'aaf', 'pass_read_fraction', 'chip_number', 'chip_number-sample_name', 'demultiplexed', 'is_it_corrected', 'downsampling', 'mutation_ID', 'fastq_name', 'primer_in_batch', 'sample_name']			
+
 	return(temp_struct)
+
+
+def alt_allele_check(design_file, allele_object_to_check):
+	"""
+	checks that don't result in modification of data:
+		- ref allele was called
+		- expected alt allele was called
+
+	checks that result in modification of data:
+		- expected alt allele called at non-primary position
+		- non-expected allele was called
+	
+	fields to modify under the above illustrated conditions:
+		- ALT, total DP, AAF, %nt QC
+	"""
+
+	
+
 
 
 
@@ -47,12 +69,10 @@ if __name__ == "__main__":
 							help="allele file (not error corrected), tab-delimited")
 	parser.add_argument("--50nt_corrected_file", 
 							required=True, 
-							help="50nt file (error corrected), 
-							tab-delimited")
+							help="50nt file (error corrected), tab-delimited")
 	parser.add_argument("--50nt_uncorrected_file", 
 							required=True, 
-							help="50nt file (not error corrected), 
-							tab-delimited")
+							help="50nt file (not error corrected), tab-delimited")
 	parser.add_argument("--sample_name", 
 							required=True, 
 							help="sample or chip name, which is used as a prefix in the output filenames")
