@@ -4,6 +4,7 @@
 import argparse
 import csv
 import os
+from turtle import pos
 import pandas as pd
 from pathlib import Path
 
@@ -13,6 +14,7 @@ def read_file(filename, hash=False):
        or dictionary if design file
 	"""
 
+	# design file
 	temp_struct = ""
 	if hash:
 		temp_struct = {}
@@ -21,15 +23,17 @@ def read_file(filename, hash=False):
 				fields = line.split('\t')
 				# build key from Chromosome #, Loci, Primer
 				key = f"{fields[2]}_{fields[3]}_{fields[0]}"
-				print(f"{fields[2]}_{fields[3]}_{fields[0]}")
+				#print(f"{fields[2]}_{fields[3]}_{fields[0]}")
 				temp_struct[key] = {}
 				temp_struct[key]["ref"] = fields[5]
 				temp_struct[key]["alt"] = fields[6]
 				temp_struct[key]["primer_code"] = fields[0]
 				temp_struct[key]["primer_name"] = fields[1]
+	# corrected/uncorrected (50nt) allele files
 	else:
 		# need to remember that the input files should not have placeholders or have duplicate columns
 		temp_struct = pd.read_csv(filename, delimiter='\t', header=None)
+		
 		#TODO: come to consensus on col names and verify them with Sonia
 		temp_struct.columns = ['chromosome', 'site1', 'site2', 'ref', 'alt', 'total_reads', 'ad', 'altreads', 'dpreads', 'aaf', 'pass_read_fraction', 'chip_number', 'chip_number-sample_name', 'demultiplexed', 'is_it_corrected', 'downsampling', 'mutation_ID', 'fastq_name', 'primer_in_batch', 'sample_name']			
 
@@ -54,10 +58,10 @@ def alt_allele_check(design_file, allele_object_to_check):
 		# need chr, loci (site1), ref, alt, primer (primer_in_batch)
 
 		# verify with design file
-		# print(f"{allele_object_to_check['chromosome'][row]}_{allele_object_to_check['site1'][row]}_{allele_object_to_check['primer_in_batch'][row]}")
-
 		# chromosome_site1_primer which is the unique key in design_file
 		to_check =  f"{allele_object_to_check['chromosome'][row]}_{allele_object_to_check['site1'][row]}_{allele_object_to_check['primer_in_batch'][row]}"
+		print(to_check)
+
 
 		# in the design file
 		if to_check in design_file:
@@ -75,7 +79,7 @@ def alt_allele_check(design_file, allele_object_to_check):
 			# verify reference in this line is the same as in the design file:
 			if reference_in_allele_file == reference_in_design_file:
 
-				print(primary_alt, " ", expected_alt, " ", reference_in_design_file) #TODO: remove after debugging
+				print(primary_alt, " ", expected_alt, " ", reference_in_design_file) #TODO: remove after debugging, seens to work fine
 
 				# string match to see if we have the expected alt allele
 				# (relevant when identifying expected alt allele in non-primary position)
@@ -83,25 +87,64 @@ def alt_allele_check(design_file, allele_object_to_check):
 
 				# check if ref was called
 				if allele_field == "<*>":
-					print("reference match") #TODO: remove after debugging. Not tested yet
-					#TODO: save to some data structure
+					#print("reference match") #TODO: remove after debugging. Not tested yet
+					continue
 
 				# was the expected alt allele called?
 				elif primary_alt == expected_alt:
-					print("primary alt match") #TODO: remove after debugging. Not tested yet
-					#TODO: save to some data structure
+					#print("primary alt match") #TODO: remove after debugging. Not tested yet
+					continue
 
-				# was the expected allele called at the non-primary position?
+				# was the expected alt allele called at the non-primary position?
 				elif pos_of_expected_alt_match != -1:
-					print("expected alt match in non-primary position") #TODO: remove after debugging. Not tested yet
+					print("expected alt match in non-primary position") #TODO: remove after debugging. Seems to work fine
 					#TODO: need to modify altreads, dpreads, aaf, pass_read_fraction, and position of match in alt
-					#TODO: save to some data structure
-				
+					
+					# need to get position of match to expected alt from AD
+					# pull out the appropriate count at that position
+					# then switch the altreads field to that count
+
+					# split AD string on commas to pull out the correct # of reads for expected alt
+					temp_list_for_alt_counts = allele_object_to_check['ad'][row].split(",")
+
+					"""
+					the position is 1 more than we actually need to pull out the correct alt count.
+					for example, for X_67851480_258, pos_of_expected_alt_match will be returned as 4, but the 
+					index we want for temp_list_for_alt_counts (['AD=142509', '11', '4', '2']) is 3. 
+
+					see allele_object_to_check['ad'][row], allele_object_to_check['altreads'][row], 
+					and allele_object_to_check['alt'][row]
+					"""
+					corrected_position = pos_of_expected_alt_match - 1
+					correct_alt_counts = temp_list_for_alt_counts[corrected_position]
+
+					allele_object_to_check['altreads'][row] = correct_alt_counts
+
+					#print(allele_object_to_check['ad'][row])
+					#print(allele_object_to_check['altreads'][row])
+					#print(allele_object_to_check['alt'][row])
+
+					# need to change DP to REF + ALT
+					ref_counts = temp_list_for_alt_counts[0].split("=")[1]
+					allele_object_to_check['dpreads'][row] = int(ref_counts) + int(correct_alt_counts)
+
+					# aaf = new ALT/new total DP = ((col 8)/(col9)) 
+					allele_object_to_check['aaf'][row] = int(allele_object_to_check['altreads'][row])/int(allele_object_to_check['dpreads'][row])
+
+					# % nt QC = col9/col6
+					#print(allele_object_to_check['pass_read_fraction'][row])
+					#print(allele_object_to_check['dpreads'][row])
+					#print(allele_object_to_check['total_reads'][row])
+
+					allele_object_to_check['pass_read_fraction'][row] = allele_object_to_check['dpreads'][row] / allele_object_to_check['total_reads'][row]
+					#print(allele_object_to_check['pass_read_fraction'][row])
+
 				# was a non-expected alt allele called?
 				elif pos_of_expected_alt_match == -1:
-					print("non-expected alt allele called") #TODO: remove after debugging. Not tested yet
+					print("non-expected alt allele called") #TODO: remove after debugging. Tested, seems to work fine
 					#TODO: need to modify altreads, dpreads, aaf, pass_read_fraction, and position of match in alt
 					#TODO: save to some data structure
+
 
 				else: 
 					print("ERROR: Exception in logic found in alt_allele_check function due to", allele_object_to_check.loc[row,:])
