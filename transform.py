@@ -250,7 +250,7 @@ def simulate_mosaic_input(args, filestem):
     return mosaic_input_output
     
 
-def simulate_sensitivity_assay(mosaic_input):
+def simulate_sensitivity_assay(mosaic_input, downsample):
     """This function simulates the creation of the SENSITIVITYASSAY spreadsheet.
     The primary difference is that everything is held in memory, compared to
     being manipulated within the excel document.
@@ -359,9 +359,8 @@ def simulate_sensitivity_assay(mosaic_input):
         entry.extend(row[20])    # U
         entry.extend(["","","","50ng","nonUMI","",""]) # X, Y, AA, AC, AD, AF, AG
         entry.extend([""]*21) # placeholders for AI-BC
-        entry.append("500000") #BD
+        entry.append(downsample) #BD
         entry.extend([""]*5) # BE-BI
-
         chipmutationID_components = entry[1].split('-')
         chipmutationID_components[2] = chipmutationID_components[2][chipmutationID_components[2].find('N'):]
         entry[1] = '-'.join(chipmutationID_components)
@@ -701,8 +700,19 @@ if __name__ == "__main__":
     # generate first spreadsheet-representative object
     mosaic_input = simulate_mosaic_input(args, filestem)
 
+	# check for consistent downsampling values
+    downsampling_values = []
+    for thing in mosaic_input[:-2]:
+        try:
+            downsampling_values.extend([row[26] for row in thing])
+        except IndexError:
+            downsampling_values.extend([row[18] for row in thing])
+    downsampling_values = set(downsampling_values)
+    if len(downsampling_values) > 1:
+        sys.exit(1, "Downsampling values not consistent; aborting. Please ensure all Downsampling columns in input files are consistent.")
+
     # generate second spreadsheet-representative object 
-    sensitivity_assay = simulate_sensitivity_assay(mosaic_input)
+    sensitivity_assay = simulate_sensitivity_assay(mosaic_input, list(downsampling_values)[0])
 
     filtered_assay = []
     if args.remove_duplicates:
