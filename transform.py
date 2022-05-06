@@ -709,7 +709,7 @@ if __name__ == "__main__":
             downsampling_values.extend([row[18] for row in thing])
     downsampling_values = set(downsampling_values)
     if len(downsampling_values) > 1:
-        sys.exit(1, "Downsampling values not consistent; aborting. Please ensure all Downsampling columns in input files are consistent.")
+        sys.exit("Downsampling values not consistent; aborting. Please ensure all Downsampling columns in input files are consistent.")
 
     # generate second spreadsheet-representative object 
     sensitivity_assay = simulate_sensitivity_assay(mosaic_input, list(downsampling_values)[0])
