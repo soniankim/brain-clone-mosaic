@@ -13,12 +13,12 @@ GetOptions(
         'oligo_target_file=s'  => \$oligo_target_file,
         'allele_corrected=s'   => \$allele_corrected,
         'allele_uncorrected=s' => \$allele_uncorrected,
-		'corrected_50nt=s'     => \$corrected_50nt,
+        'corrected_50nt=s'     => \$corrected_50nt,
         'uncorrected_50nt=s'   => \$uncorrected_50nt,
         'output_dir=s'         => \$output_dir,
         'sample_name=s'        => \$sample_name,
         'cutoff=i'             => \$cutoff,
-		'remove_ref_lt_alt'    => \$remove_ref_lt_alt,
+        'remove_ref_lt_alt'    => \$remove_ref_lt_alt,
         'debug'                => \$debug
 );
 
