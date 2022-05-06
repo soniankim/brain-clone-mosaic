@@ -81,37 +81,10 @@ my ($allele_corrected_pass_ref, $allele_corrected_fail_ref, $allele_uncorrected_
 @corrected_50nt_pass = @$corrected_50nt_pass_ref;
 @uncorrected_50nt_pass = @$uncorrected_50nt_pass_ref;
 
-# compare each file (allele corrected/uncorrected & 50nt corrected/uncorrected)
-# with the design file.
-#my (@allele_corrected_pass, @allele_corrected_fail, @allele_uncorrected_pass, @allele_uncorrected_fail);
-
-# send allele_corrected file to alternate allele check function
-#print "\nRunning alt allele check to compare with the design file:\n\tAllele Corrected\n";
-#my ($allele_corrected_pass_ref, $allele_corrected_fail_ref)  = alt_allele_check(\%oligo_target, \@allele_corrected, $debug);
-#@allele_corrected_pass = @$allele_corrected_pass_ref; @allele_corrected_fail = @$allele_corrected_fail_ref;
-
-# send allele uncorrected file to alternate allele check function
-#print "\tAllele Uncorrected\n";
-#my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = alt_allele_check(\%oligo_target, \@allele_uncorrected, $debug);
-#@allele_uncorrected_pass = @$allele_uncorrected_pass_ref; @allele_uncorrected_fail = @$allele_uncorrected_fail_ref;
-
-#print "\n\t* \"Passing\" data includes:\n\t\t- matching chr + loci + primer in the the design file with either a reference match,\n\t\t- the expected primary alt allele,\n\t\t- the expected alt allele in a non-primary position,\n\t\t- and alternative alleles that are not the expected one.\n\tFor the last two cases, modification of data will be done.\n";
-#print "\n\t* \"Failing\" data includes:\n\t\t- no matching chr + loci + primer in the design file,\n\t\t- or wrong reference for a chr + loci + primer found in the design file.\n\n";
-
-# collate primers that failed during the alt allele check (comparison with the design file)
-#print "Running function to collate the list of primers that conflict that the design file, for both allele corrected and allele uncorrected.\n";
-#my ($collated_failed_primers_ref) = find_primers_that_conflict_with_design_file(\@allele_corrected_fail, \@allele_uncorrected_fail, $debug);
-#my @fail_primers; @fail_primers = @$collated_failed_primers_ref;
-#my $fail_primers_size = $#fail_primers + 1;
-#print "\tNumber of primers to remove: $fail_primers_size\n" if @fail_primers;
-#print "\t\t",join(", ", sort @fail_primers),"\n\n";
-#print "\tNo primers found that conflict with the design file.\n\n" unless @fail_primers;
-
 # send allele corrected + uncorrected data from the alt_allele_check function to the filtering function
 # also send the 50 nt files to the filtering function
 print "\nRunning filter function to discard allele corrected, allele uncorrected, 50nt corrected, and 50nt uncorrected data below the cutoff of $cutoff and/or that conflicts with the design file.\n";
 my (%ac_above_cutoff, %ac_below_cutoff, %auc_above_cutoff, %auc_below_cutoff, @corrected_50nt_above_cutoff, @corrected_50nt_below_cutoff, @uncorrected_50nt_above_cutoff, @uncorrected_50nt_below_cutoff, %ac_missing_in_auc, %auc_missing_in_ac);
-#my ($ac_above_cutoff_ref, $ac_below_cutoff_ref, $auc_above_cutoff_ref, $auc_below_cutoff_ref, $corrected_50nt_above_cutoff_ref, $corrected_50nt_below_cutoff_ref, $uncorrected_50nt_above_cutoff_ref, $uncorrected_50nt_below_cutoff_ref, $ac_missing_in_auc_ref, $auc_missing_in_ac_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt, \@uncorrected_50nt, \@fail_primers, $cutoff, $remove_ref_lt_alt, $debug);
 my ($ac_above_cutoff_ref, $ac_below_cutoff_ref, $auc_above_cutoff_ref, $auc_below_cutoff_ref, $corrected_50nt_above_cutoff_ref, $corrected_50nt_below_cutoff_ref, $uncorrected_50nt_above_cutoff_ref, $uncorrected_50nt_below_cutoff_ref, $ac_missing_in_auc_ref, $auc_missing_in_ac_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt_pass, \@uncorrected_50nt_pass, $cutoff, $remove_ref_lt_alt, $debug);
 
 %ac_above_cutoff = %$ac_above_cutoff_ref; %ac_below_cutoff = %$ac_below_cutoff_ref;
@@ -575,11 +548,6 @@ sub filter{
 			$remove_from_50nt_files{$primer} = 1;
 		}
 	}	 
-
-	# add in all of the primers that previously failed due to design file issues to the "remove" bucket for the 50nt files:
-	#for my $primer (@fail_primers){
-	#	$remove_from_50nt_files{$primer} = 1;
-	#}
 
 	# remove the irrelevant lines (those corresponding to amplicons < the cutoff) from 50nt files
 	my @corrected_50nt_above_cutoff; my @corrected_50nt_below_cutoff;
