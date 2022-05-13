@@ -92,11 +92,17 @@ print "\nRunning filter function to discard allele corrected, allele uncorrected
 print "\nRunning filter function to discard allele corrected, allele uncorrected, 50nt corrected, and 50nt uncorrected data below the minimum read cutoff of $cutoff, with reference counts less than alt counts, and/or that conflicts with the design file.\n" if $remove_ref_lt_alt;
 my (%ac_above_cutoff, %ac_below_cutoff, %auc_above_cutoff, %auc_below_cutoff, @corrected_50nt_above_cutoff, @corrected_50nt_below_cutoff, @uncorrected_50nt_above_cutoff, @uncorrected_50nt_below_cutoff, %ac_missing_in_auc, %auc_missing_in_ac, 
 %ac_above_cutoff_above_qc_filter, %ac_above_cutoff_below_qc_filter, %auc_above_cutoff_above_qc_filter, %auc_above_cutoff_below_qc_filter,
-@corrected_50nt_above_cutoff_above_qc_filter, @corrected_50nt_above_cutoff_below_qc_filter, @uncorrected_50nt_above_cutoff_above_qc_filter, @uncorrected_50nt_above_cutoff_below_qc_filter);
+@corrected_50nt_above_cutoff_above_qc_filter, @corrected_50nt_above_cutoff_below_qc_filter, @uncorrected_50nt_above_cutoff_above_qc_filter, @uncorrected_50nt_above_cutoff_below_qc_filter, 
+@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, @corrected_50nt_above_cutoff_above_qc_ref_lt_alt, @uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt,
+@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, @ac_above_cutoff_above_qc_ref_gt_alt,
+@ac_above_cutoff_above_qc_ref_lt_alt, @auc_above_cutoff_above_qc_ref_gt_alt,  @auc_above_cutoff_above_qc_ref_lt_alt);
 
 my ($ac_above_cutoff_ref, $ac_below_cutoff_ref, $auc_above_cutoff_ref, $auc_below_cutoff_ref, $corrected_50nt_above_cutoff_ref, $corrected_50nt_below_cutoff_ref, $uncorrected_50nt_above_cutoff_ref, $uncorrected_50nt_below_cutoff_ref, $ac_missing_in_auc_ref, $auc_missing_in_ac_ref,
 $ac_above_cutoff_above_qc_filter_ref, $ac_above_cutoff_below_qc_filter_ref, $auc_above_cutoff_above_qc_filter_ref, $auc_above_cutoff_below_qc_filter_ref,
-$corrected_50nt_above_cutoff_above_qc_filter_ref, $corrected_50nt_above_cutoff_below_qc_filter_ref, $uncorrected_50nt_above_cutoff_above_qc_filter_ref, $uncorrected_50nt_above_cutoff_below_qc_filter_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt_pass, \@uncorrected_50nt_pass, $cutoff, $qc_pass_filter, $remove_ref_lt_alt, $debug);
+$corrected_50nt_above_cutoff_above_qc_filter_ref, $corrected_50nt_above_cutoff_below_qc_filter_ref, $uncorrected_50nt_above_cutoff_above_qc_filter_ref, $uncorrected_50nt_above_cutoff_below_qc_filter_ref, 
+$corrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref, $corrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref,
+$uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $ac_above_cutoff_above_qc_ref_gt_alt_ref, $ac_above_cutoff_above_qc_ref_lt_alt_ref,
+$auc_above_cutoff_above_qc_ref_gt_alt_ref, $auc_above_cutoff_above_qc_ref_lt_alt_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt_pass, \@uncorrected_50nt_pass, $cutoff, $qc_pass_filter, $remove_ref_lt_alt, $debug);
 
 %ac_above_cutoff = %$ac_above_cutoff_ref; %ac_below_cutoff = %$ac_below_cutoff_ref;
 %auc_above_cutoff = %$auc_above_cutoff_ref; %auc_below_cutoff = %$auc_below_cutoff_ref;
@@ -112,6 +118,15 @@ $corrected_50nt_above_cutoff_above_qc_filter_ref, $corrected_50nt_above_cutoff_b
 @corrected_50nt_above_cutoff_below_qc_filter = @$corrected_50nt_above_cutoff_below_qc_filter_ref;
 @uncorrected_50nt_above_cutoff_above_qc_filter = @$uncorrected_50nt_above_cutoff_above_qc_filter_ref;
 @uncorrected_50nt_above_cutoff_below_qc_filter = @$uncorrected_50nt_above_cutoff_below_qc_filter_ref;
+
+@corrected_50nt_above_cutoff_above_qc_ref_gt_alt = @$corrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref;
+@corrected_50nt_above_cutoff_above_qc_ref_lt_alt = @$corrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref;
+@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt = @$uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref;
+@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt = @$uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref;
+@ac_above_cutoff_above_qc_ref_gt_alt = @$ac_above_cutoff_above_qc_ref_gt_alt_ref;
+@ac_above_cutoff_above_qc_ref_lt_alt = @$ac_above_cutoff_above_qc_ref_lt_alt_ref;
+@auc_above_cutoff_above_qc_ref_gt_alt = @$auc_above_cutoff_above_qc_ref_gt_alt_ref; 
+@auc_above_cutoff_above_qc_ref_lt_alt = @$auc_above_cutoff_above_qc_ref_lt_alt_ref;
 
 
 print "List of output files:\n";
@@ -157,8 +172,16 @@ write_file(\@uncorrected_50nt_above_cutoff_below_qc_filter, $fail_dir, $sample_n
 
 if($remove_ref_lt_alt){
 	print "\n\tData with ref > alt\n";
+	write_file(\@ac_above_cutoff_above_qc_ref_gt_alt,  $pass_dir, $sample_name, "alleleErrC.passAltAlleleCheck.aboveCutoff.aboveQCfilter.refGTalt.txt", 0);
+	write_file(\@auc_above_cutoff_above_qc_ref_gt_alt, $pass_dir, $sample_name, "alleleNoC.passAltAlleleCheck.aboveCutoff.aboveQCfilter.refGTalt.txt", 0);
+	write_file(\@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, $pass_dir, $sample_name, "50ntErrC.aboveCutoff.aboveQCfilter.refGTalt.txt", 0);
+	write_file(\@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, $pass_dir, $sample_name, "50ntNoC.aboveCutoff.aboveQCfilter.refGTalt.txt", 0);
 
 	print "\n\tData with ref < alt\n";
+	write_file(\@ac_above_cutoff_above_qc_ref_lt_alt ,  $fail_dir, $sample_name, "alleleErrC.passAltAlleleCheck.aboveCutoff.aboveQCfilter.refLTalt.txt", 0);
+	write_file(\@auc_above_cutoff_above_qc_ref_lt_alt, $fail_dir, $sample_name, "alleleNoC.passAltAlleleCheck.aboveCutoff.aboveQCfilter.refLTalt.txt", 0);
+	write_file(\@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, $fail_dir, $sample_name, "50ntErrC.aboveCutoff.aboveQCfilter.refLTalt.txt", 0);
+	write_file(\@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt , $fail_dir, $sample_name, "50ntNoC.aboveCutoff.aboveQCfilter.refLTalt.txt", 0);
 }
 
 
@@ -674,9 +697,7 @@ sub filter{
 		}
 
 		#TODO: ?? need to check if it is removed in one dataset it needs to be removed in another?
-
-		#TODO: need to return files & print 'em out.
-
+ 
 	}else{
 		print "\tError in filter function. Minimum QC Pass Fraction is unset."; # should never get this error
 	}
@@ -686,15 +707,27 @@ sub filter{
 	# if ref < alt toggle is on, then make sure to remove the lines where ref allele counts are less than alt allele counts.
 	# must do this for 4 files, then send the ref < alt lines to new files.
 
-	my (%ac_above_cutoff_ref_gt_alt, %ac_above_cutoff_ref_lt_alt, %auc_above_cutoff_ref_gt_alt, %auc_above_cutoff_ref_lt_alt,  @corrected_50nt_above_cutoff_ref_gt_alt, @corrected_50nt_above_cutoff_ref_lt_alt, @uncorrected_50nt_above_cutoff_ref_gt_alt, @uncorrected_50nt_above_cutoff_ref_lt_alt);
+	# 50ntErrC, 50ntNoC, alleleErrC, alleleNoC
+	my ($corrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref, 
+	$corrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref, 
+	$uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $ac_above_cutoff_above_qc_ref_gt_alt_ref, $ac_above_cutoff_above_qc_ref_lt_alt_ref, $auc_above_cutoff_above_qc_ref_gt_alt_ref, $auc_above_cutoff_above_qc_ref_lt_alt_ref) = remove_data_if_ref_lt_alt(\@corrected_50nt_above_cutoff_above_qc_filter, \@uncorrected_50nt_above_cutoff_above_qc_filter, \%ac_above_cutoff_above_qc_filter, \%auc_above_cutoff_above_qc_filter, $print_if_debug) if $remove_ref_lt_alt;
 
-	#(%ac_above_cutoff_ref_gt_alt, %ac_above_cutoff_ref_lt_alt, %auc_above_cutoff_ref_gt_alt, %auc_above_cutoff_ref_lt_alt, @corrected_50nt_above_cutoff_ref_gt_alt, @corrected_50nt_above_cutoff_ref_lt_alt, @uncorrected_50nt_above_cutoff_ref_gt_alt, @uncorrected_50nt_above_cutoff_ref_lt_alt)= remove_data_if_ref_lt_alt(%ac_above_cutoff, %auc_above_cutoff, @corrected_50nt_above_cutoff, @uncorrected_50nt_above_cutoff) if $remove_ref_lt_alt; # alleleErrC, alleleNoC, 50ntErrC, 50ntNoC
-	remove_data_if_ref_lt_alt(@corrected_50nt_above_cutoff, @uncorrected_50nt_above_cutoff, %ac_above_cutoff, %auc_above_cutoff, $print_if_debug) if $remove_ref_lt_alt; # 50ntErrC, 50ntNoC, alleleErrC, alleleNoC
+	my @corrected_50nt_above_cutoff_above_qc_ref_gt_alt = @$corrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref; 
+	my @corrected_50nt_above_cutoff_above_qc_ref_lt_alt = @$corrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref;
+	my @uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt = @$uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref; 
+	my @uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt = @$uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref;
+	my @ac_above_cutoff_above_qc_ref_gt_alt = @$ac_above_cutoff_above_qc_ref_gt_alt_ref;
+	my @ac_above_cutoff_above_qc_ref_lt_alt = @$ac_above_cutoff_above_qc_ref_lt_alt_ref;
+	my @auc_above_cutoff_above_qc_ref_gt_alt = @$auc_above_cutoff_above_qc_ref_gt_alt_ref;
+	my @auc_above_cutoff_above_qc_ref_lt_alt = @$auc_above_cutoff_above_qc_ref_lt_alt_ref;
 
 	#TODO clean up below:
 	# table to check logic, make sure the numbers make sense
 	my $allele_corrected_size = $#allele_corrected_pass + 1; my $allele_corrected_pass_dp_above_cutoff_size = keys(%ac_above_cutoff); my $allele_corrected_pass_dp_below_cutoff_size = keys(%ac_below_cutoff); my $allele_corrected_pass_not_in_allele_uncorrected = keys(%ac_missing_in_auc);
 	my $ac_above_cutoff_above_qc_filter_size = keys(%auc_above_cutoff_above_qc_filter); my $ac_above_cutoff_below_qc_filter_size = keys(%ac_above_cutoff_below_qc_filter);
+	my $ac_above_cutoff_above_qc_ref_gt_alt_counts = $#ac_above_cutoff_above_qc_ref_gt_alt +1;
+	my $ac_above_cutoff_above_qc_ref_lt_alt_counts = $#ac_above_cutoff_above_qc_ref_lt_alt +1;
+
 	print "\n\tAllele Corrected";
 	print "\n\t\tSize of \"pass\" data sent to function:($allele_corrected_size)";
 	print "\n\t\tSize of \"pass\" data above DP cutoff:($allele_corrected_pass_dp_above_cutoff_size)";
@@ -703,10 +736,14 @@ sub filter{
 	print "\t\tSize of \"pass\" data (primer IDs) that are not in allele uncorrected:($allele_corrected_pass_not_in_allele_uncorrected), specific primers:\n";
 	print "\t\t\t", join(", ", sort keys %ac_missing_in_auc), "\n";
 	print "\t\tSize of data that's above the DP cutoff & above the QC pass filter:($ac_above_cutoff_above_qc_filter_size)\n";
-	print "\t\tSize of data that's above the DP cutoff & below the QC pass filter:($ac_above_cutoff_below_qc_filter_size)\n\n";
+	print "\t\tSize of data that's above the DP cutoff & below the QC pass filter:($ac_above_cutoff_below_qc_filter_size)\n";
+	print "\t\tSize of data that has ref > alt:($ac_above_cutoff_above_qc_ref_gt_alt_counts)\n";
+	print "\t\tSize of data that has ref < alt:($ac_above_cutoff_above_qc_ref_lt_alt_counts)\n\n";
 
 	my $allele_uncorrected_size = $#allele_uncorrected_pass + 1; my $allele_uncorrected_pass_dp_above_cutoff_size = keys(%auc_above_cutoff); my $allele_uncorrected_pass_dp_below_cutoff_size = keys(%auc_below_cutoff); my $allele_uncorrected_pass_not_in_allele_corrected = keys(%auc_missing_in_ac);
 	my $auc_above_cutoff_above_qc_filter_size = keys(%auc_above_cutoff_above_qc_filter); my $auc_above_cutoff_below_qc_filter_size = keys(%auc_above_cutoff_below_qc_filter);
+	my $auc_above_cutoff_above_qc_ref_gt_alt_counts = $#auc_above_cutoff_above_qc_ref_gt_alt +1;
+	my $auc_above_cutoff_above_qc_ref_lt_alt_counts = $#auc_above_cutoff_above_qc_ref_lt_alt +1;
 	print "\tAllele Uncorrected\n";
 	print "\t\tSize of \"pass\" data to function:($allele_uncorrected_size)\n";
 	print "\t\tSize of \"pass\" data above DP cutoff:($allele_uncorrected_pass_dp_above_cutoff_size)\n";
@@ -715,7 +752,10 @@ sub filter{
 	print "\t\tSize of \"pass\" data (primer IDs) that are not in allele corrected:($allele_uncorrected_pass_not_in_allele_corrected), specific primers:\n";
 	print "\t\t\t", join(", ", sort keys %auc_missing_in_ac), "\n";
 	print "\t\tSize of data that's above the DP cutoff & above the QC pass filter:($auc_above_cutoff_above_qc_filter_size)\n";
-	print "\t\tSize of data that's above the DP cutoff & below the QC pass filter:($auc_above_cutoff_below_qc_filter_size)\n\n";
+	print "\t\tSize of data that's above the DP cutoff & below the QC pass filter:($auc_above_cutoff_below_qc_filter_size)\n";
+	print "\t\tSize of data that has ref > alt:($auc_above_cutoff_above_qc_ref_gt_alt_counts)\n";
+	print "\t\tSize of data that has ref < alt:($auc_above_cutoff_above_qc_ref_lt_alt_counts)\n\n";
+
 
 	my $remove_from_50nt_files_size = keys(%remove_from_50nt_files);
 	print "\tPrimers to Remove\n";
@@ -730,55 +770,121 @@ sub filter{
 	my $corrected_50nt_below_cutoff_size = $#corrected_50nt_below_cutoff + 1;
 	my $corrected_50nt_above_cutoff_above_qc_filter_size = $#corrected_50nt_above_cutoff_above_qc_filter + 1; 
 	my $corrected_50nt_above_cutoff_below_qc_filter_size = $#corrected_50nt_above_cutoff_below_qc_filter + 1; 
+	my $corrected_50nt_above_cutoff_above_qc_ref_gt_alt_counts = $#corrected_50nt_above_cutoff_above_qc_ref_gt_alt +1;
+	my $corrected_50nt_above_cutoff_above_qc_ref_lt_alt_counts = $#corrected_50nt_above_cutoff_above_qc_ref_lt_alt +1;
 	print "\t50nt Error Corrected\n";
 	print "\t\tSize of input data to function:($corrected_50nt_size)\n";
 	print "\t\tSize of only data representing primers \"to keep\" based upon DP cutoff:($corrected_50nt_above_cutoff_size)\n";
 	print "\t\tSize of only data representing primers \"to remove\" based upon DP cutoff:($corrected_50nt_below_cutoff_size)\n";
 	print "\t\tSize of data above QC pass filter:($corrected_50nt_above_cutoff_above_qc_filter_size)\n";
-	print "\t\tSize of data below QC pass filter:($corrected_50nt_above_cutoff_below_qc_filter_size)\n\n";
+	print "\t\tSize of data below QC pass filter:($corrected_50nt_above_cutoff_below_qc_filter_size)\n";
+	print "\t\tSize of data that has ref > alt:($corrected_50nt_above_cutoff_above_qc_ref_gt_alt_counts)\n";
+	print "\t\tSize of data that has ref < alt:($corrected_50nt_above_cutoff_above_qc_ref_lt_alt_counts)\n\n";
 
 	my $uncorrected_50nt_size = $#uncorrected_50nt + 1; my $uncorrected_50nt_above_cutoff_size = $#uncorrected_50nt_above_cutoff + 1;
 	my $uncorrected_50nt_below_cutoff_size = $#uncorrected_50nt_below_cutoff + 1; 
 	my $uncorrected_50nt_above_cutoff_above_qc_filter_size = $#uncorrected_50nt_above_cutoff_above_qc_filter + 1; 
 	my $uncorrected_50nt_above_cutoff_below_qc_filter_size = $#uncorrected_50nt_above_cutoff_below_qc_filter + 1; 
+	my $uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt_counts = $#uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt +1;
+	my $uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt_counts = $#uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt +1;
 	print "\t50nt Uncorrected\n";
 	print "\t\tSize of input data to function:($uncorrected_50nt_size)\n";
 	print "\t\tSize of only data representing primers \"to keep\":($uncorrected_50nt_above_cutoff_size)\n";
 	print "\t\tSize of only data representing primers \"to remove\":($uncorrected_50nt_below_cutoff_size)\n";
 	print "\t\tSize of data above QC pass filter:($uncorrected_50nt_above_cutoff_above_qc_filter_size)\n";
-	print "\t\tSize of data below QC pass filter:($uncorrected_50nt_above_cutoff_below_qc_filter_size)\n\n";
+	print "\t\tSize of data below QC pass filter:($uncorrected_50nt_above_cutoff_below_qc_filter_size)\n";
+	print "\t\tSize of data that has ref > alt:($uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt_counts)\n";
+	print "\t\tSize of data that has ref < alt:($uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt_counts)\n\n";
 
 	# return data structures of interest, so we can print them out!
+	# add in stuff from ref/alt check
 	return (\%ac_above_cutoff, \%ac_below_cutoff, \%auc_above_cutoff, \%auc_below_cutoff, \@corrected_50nt_above_cutoff, \@corrected_50nt_below_cutoff, \@uncorrected_50nt_above_cutoff, \@uncorrected_50nt_below_cutoff, \%ac_missing_in_auc, \%auc_missing_in_ac, 
 	\%ac_above_cutoff_above_qc_filter, \%ac_above_cutoff_below_qc_filter, \%auc_above_cutoff_above_qc_filter, \%auc_above_cutoff_below_qc_filter,
-	\@corrected_50nt_above_cutoff_above_qc_filter, \@corrected_50nt_above_cutoff_below_qc_filter, \@uncorrected_50nt_above_cutoff_above_qc_filter, \@uncorrected_50nt_above_cutoff_below_qc_filter);
+	\@corrected_50nt_above_cutoff_above_qc_filter, \@corrected_50nt_above_cutoff_below_qc_filter, \@uncorrected_50nt_above_cutoff_above_qc_filter, \@uncorrected_50nt_above_cutoff_below_qc_filter,
+	\@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, \@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, \@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, \@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, \@ac_above_cutoff_above_qc_ref_gt_alt, \@ac_above_cutoff_above_qc_ref_lt_alt, \@auc_above_cutoff_above_qc_ref_gt_alt, \@auc_above_cutoff_above_qc_ref_lt_alt);
 
 }
 
 sub remove_data_if_ref_lt_alt{
 	# de-reference the references that were passed to the subroutine
-	my (@corrected_50nt_above_cutoff, @uncorrected_50nt_above_cutoff, %ac_above_cutoff, %auc_above_cutoff, $debug) =@_;
+	my ($corrected_50nt_above_cutoff_above_qc_filter_ref, $uncorrected_50nt_above_cutoff_above_qc_filter_ref, $ac_above_cutoff_above_qc_filter_ref, $auc_above_cutoff_above_qc_filter_ref, $debug) =@_;
+
+	# de-reference the references that were passed to the subroutine
+	my @corrected_50nt_above_cutoff_above_qc_filter = @$corrected_50nt_above_cutoff_above_qc_filter_ref;
+	my @uncorrected_50nt_above_cutoff_above_qc_filter = @$uncorrected_50nt_above_cutoff_above_qc_filter_ref;
+	my %ac_above_cutoff_above_qc_filter = %$ac_above_cutoff_above_qc_filter_ref;
+	my %auc_above_cutoff_above_qc_filter = %$auc_above_cutoff_above_qc_filter_ref;
 
 	# run through for array ones
+	my (@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, @corrected_50nt_above_cutoff_above_qc_ref_lt_alt, @uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, @uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, @ac_above_cutoff_above_qc_ref_gt_alt, @ac_above_cutoff_above_qc_ref_lt_alt, @auc_above_cutoff_above_qc_ref_gt_alt, @auc_above_cutoff_above_qc_ref_lt_alt);
 
 	# corrected 50nt 
-	for my $line (@corrected_50nt_above_cutoff){
-		print $line, "\n" if $debug;
-		#if 
+	for my $line (@corrected_50nt_above_cutoff_above_qc_filter){
+		my @temp = split("\t", $line);
+		my $AD = $temp[6];
+
+		my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
+		my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
+
+		if ($ref_count > $alt_count){
+			push (@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
+		}else{
+			push (@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
+		}
 	}
 
 	# uncorrected 50 nt
+	for my $line (@uncorrected_50nt_above_cutoff_above_qc_filter){
+		my @temp = split("\t", $line);
+		my $AD = $temp[6];
 
+		my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
+		my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
+
+		if ($ref_count > $alt_count){
+			push (@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
+		}else{
+			push (@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
+		}
+	}
 
 	# run through for hash ones
 
 	# allele corrected
+	foreach my $key (keys %ac_above_cutoff_above_qc_filter) {
+		my $line = $ac_above_cutoff_above_qc_filter{$key};
+		my @temp = split("\t", $line);
 
+		my $AD = $temp[6];
+
+		my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
+		my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
+
+		if ($ref_count > $alt_count){
+			push(@ac_above_cutoff_above_qc_ref_gt_alt, $line);
+		}else{
+			push(@ac_above_cutoff_above_qc_ref_lt_alt, $line);
+		}
+	}
 
 	# allele uncorrected
+	foreach my $key (keys %auc_above_cutoff_above_qc_filter) {
+		my $line = $auc_above_cutoff_above_qc_filter{$key};
+		my @temp = split("\t", $line);
 
+		my $AD = $temp[6];
 
-	#return (\%ac_above_cutoff_ref_gt_alt, \%ac_above_cutoff_ref_lt_alt, \%auc_above_cutoff_ref_gt_alt, \%auc_above_cutoff_ref_lt_alt, \@corrected_50nt_above_cutoff_ref_gt_alt, \@corrected_50nt_above_cutoff_ref_lt_alt, \@uncorrected_50nt_above_cutoff_ref_gt_alt, \@uncorrected_50nt_above_cutoff_ref_lt_alt);
+		my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
+		my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
+
+		if ($ref_count > $alt_count){
+			push(@auc_above_cutoff_above_qc_ref_gt_alt, $line);
+		}else{
+			push(@auc_above_cutoff_above_qc_ref_lt_alt, $line);
+		}
+	}
+
+	return (\@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, \@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, \@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, \@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, \@ac_above_cutoff_above_qc_ref_gt_alt, \@ac_above_cutoff_above_qc_ref_lt_alt, \@auc_above_cutoff_above_qc_ref_gt_alt, \@auc_above_cutoff_above_qc_ref_lt_alt);
 }
 
 
