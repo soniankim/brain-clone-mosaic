@@ -34,8 +34,8 @@ pod2usage("$0: Not enough files provided.\n") unless $oligo_target_file && $alle
 # unless you gave a cutoff, we'll use 0
 $cutoff = 0 unless $cutoff;
 
-# unless you give a qc_pass_filter value, we'll use .75
-$qc_pass_filter = .75 unless $qc_pass_filter;
+# unless you give a qc_pass_filter value, we'll use .7
+$qc_pass_filter = .7 unless $qc_pass_filter;
 
 # unless you use remove_ref_lt_alt (remove data if reference counts are less than alt counts), it'll be set to 0 (or false)
 $remove_ref_lt_alt = 0 unless $remove_ref_lt_alt;
@@ -912,7 +912,7 @@ verify_primary_alt_allele.pl [options]
 	-output_dir             folder to save output files
   	-sample_name            sample or chip name, which is used as a prefix in the output filenames
 	-cutoff                 minimum read depth to take (default: 0)
-	-qc_pass_filter         minimum fraction of passable reads from total reads (default: .75)
+	-qc_pass_filter         minimum fraction of passable reads from total reads (default: .7)
 	-remove_ref_lt_alt      remove data where the reference counts are less than alt counts
   	-debug                  turn on debugging output
 =cut
