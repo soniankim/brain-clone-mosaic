@@ -247,6 +247,15 @@ def simulate_mosaic_input(args, filestem):
 
     mosaic_input_output = [allele_tab, window_tab, allele_tab_tab, window_tab_tab, sensitivity_tab_tab, c_designfile_tab]
 
+    print(mosaic_input_output)
+
+    for thing in mosaic_input_output:
+        try:
+            print(thing[0][27])
+        except IndexError:
+            print(thing[0][18])
+    sys.exit()
+    
     return mosaic_input_output
     
 
