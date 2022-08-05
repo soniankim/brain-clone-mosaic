@@ -55,13 +55,13 @@ def simulate_mosaic_input(args, filestem):
 
     # load the corrected allele file (e.g. *-alleleErrC.txt.input.txt)
     allele_tab_corrected = read_from_file(args.allele_corrected, args.cutoff)
-
+    print(allele_tab_corrected[0])
     num_corrected_allele_entries = len(allele_tab_corrected)
     #print(num_corrected_allele_entries)
 
     # load the uncorrected allele file (e.g. *-alleleNoC.txt.input.txt)
     allele_tab_uncorrected = read_from_file(args.allele_uncorrected, args.cutoff)
-
+    print(allele_tab_uncorrected[0])
     # glue them together (create ALLELE tab)
     allele_tab = allele_tab_corrected + allele_tab_uncorrected
     print(allele_tab[0])
