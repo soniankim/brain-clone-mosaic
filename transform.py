@@ -23,8 +23,8 @@ def read_from_file(filename, cutoff=None):
     with open(filename, "r") as f:
         for row in f:
             entry = row.rstrip().split('\t')
-            print(entry)
             if cutoff != None: # if applicable, only include rows that exceed the minimum DP threshold (default: 0)
+                print(entry[8])
                 if int(entry[8]) >= cutoff: # filter on read depth (column 9 of the relevant inputs)
                     print("entry beat cutoff")
                     obj.append(entry)
