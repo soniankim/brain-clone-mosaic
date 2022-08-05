@@ -32,6 +32,7 @@ def read_from_file(filename, cutoff=None):
                 obj.append(entry)
 
     print(obj[0])
+    sys.exit()
 
     return obj
 
@@ -700,9 +701,6 @@ if __name__ == "__main__":
     parser.add_argument("--remove_duplicates", action="store_true", default=False, help="eliminate duplicate output rows before writing to file")
 
     args = parser.parse_args()
-
-    print(args.allele_corrected)
-    sys.exit()
 
     try:
         os.makedirs(args.output_dir)
