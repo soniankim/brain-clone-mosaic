@@ -697,6 +697,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    print(args.allele_corrected)
+    sys.exit()
+
     try:
         os.makedirs(args.output_dir)
     except OSError as exc:
