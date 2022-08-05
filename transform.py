@@ -51,8 +51,6 @@ def simulate_mosaic_input(args, filestem):
 
     # load the designfile
     c_designfile_tab = read_from_file(args.oligo_target_file)
-    print(c_designfile_tab[1])
-    sys.exit()
 #    write_to_file("output-c-designfile_tab.txt", c_designfile_tab, args.output_dir)
 
     # load the corrected allele file (e.g. *-alleleErrC.txt.input.txt)
@@ -66,7 +64,8 @@ def simulate_mosaic_input(args, filestem):
 
     # glue them together (create ALLELE tab)
     allele_tab = allele_tab_corrected + allele_tab_uncorrected
-
+    print(allele_tab[0])
+    sys.exit()
     num_total_allele_entries = len(allele_tab)
     #print(num_total_allele_entries)
 
