@@ -692,6 +692,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    np.seterr(all="raise")
+
     try:
         os.makedirs(args.output_dir)
     except OSError as exc:
