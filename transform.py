@@ -453,14 +453,15 @@ def simulate_sensitivity_assay(mosaic_input, downsample):
             mean_vals_error = np.mean(vals_c_error)
             #ci_raw = stats.norm.interval(0.95, loc=mean_vals_error, scale=entry[32]/math.sqrt(len(vals_c_error)))
             try:
-                ci_raw = stats.t.interval(alpha=0.95, loc=mean_vals_error, df=len(vals_c_error)-1, scale=stats.sem(vals_c_error))
-            except FloatingPointError:
                 print(mean_vals_error)
                 print(len(vals_c_error))
                 print(vals_c_error)
+                ci_raw = stats.t.interval(alpha=0.95, loc=mean_vals_error, df=len(vals_c_error)-1, scale=stats.sem(vals_c_error))
+            except FloatingPointError:
                 raise
             if not np.isnan(ci_raw[1]):
                 entry[33] = ci_raw[1] - mean_vals_error
+                print(entry[33])
             else:
                 entry[33] = ""
             entry.append(mean_vals_error)
@@ -698,7 +699,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    np.seterr(all="raise")
+    #np.seterr(all="raise")
 
     try:
         os.makedirs(args.output_dir)
