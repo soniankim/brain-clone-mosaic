@@ -711,6 +711,8 @@ if __name__ == "__main__":
     basename = path_leaf(args.allele_corrected)
     filestem = '-'.join(basename.split('-')[:3])
 
+    np.seterr(all="raise")
+
     # generate first spreadsheet-representative object
     mosaic_input = simulate_mosaic_input(args, filestem)
 
