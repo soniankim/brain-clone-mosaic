@@ -453,6 +453,7 @@ def simulate_sensitivity_assay(mosaic_input, downsample):
             mean_vals_error = np.mean(vals_c_error)
             #ci_raw = stats.norm.interval(0.95, loc=mean_vals_error, scale=entry[32]/math.sqrt(len(vals_c_error)))
             try:
+                print("new row starts here")
                 print(mean_vals_error)
                 print(len(vals_c_error))
                 print(vals_c_error)
