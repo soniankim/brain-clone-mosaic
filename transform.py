@@ -570,6 +570,10 @@ def simulate_sensitivity_assay(mosaic_input, downsample):
         # if we encounter an empty value, throw out the calculation and use a blank instead
         try:
             raw_aafs = [float(q20_allele_tab_N[pos]) for pos in range(len(q20_allele_tab_N)) if all([q20_allele_tab_D[pos] == row[1], q20_allele_tab_R[pos] == "uncorrected", q20_allele_tab_S[pos] == row[37]])]
+            print(f"q20_allele_tab_N: {q20_allele_tab_N}")
+            print(f"q20_allele_tab_D (match value: {row[1]}): {q20_allele_tab_D}")
+            print(f"q20_allele_tab_R (match value: 'uncorrected'): {q20_allele_tab_R}")
+            print(f"q20_allele_tab_S (match value: {row[37]}): {q20_allele_tab_S}")
             print(f"raw aafs: {raw_aafs}")
             row.append(sum(raw_aafs) / len(raw_aafs)) # raw average AAF
         except ValueError:
