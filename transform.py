@@ -454,9 +454,9 @@ def simulate_sensitivity_assay(mosaic_input, downsample):
             #ci_raw = stats.norm.interval(0.95, loc=mean_vals_error, scale=entry[32]/math.sqrt(len(vals_c_error)))
             try:
                 print("new row starts here")
-                print(mean_vals_error)
-                print(len(vals_c_error))
-                print(vals_c_error)
+                print(f"mean_vals_error: {mean_vals_error}")
+                print(f"length of vals_c_error: {len(vals_c_error)}")
+                print(f"vals_c_error: {vals_c_error}")
                 ci_raw = stats.t.interval(alpha=0.95, loc=mean_vals_error, df=len(vals_c_error)-1, scale=stats.sem(vals_c_error))
             except FloatingPointError:
                 raise
