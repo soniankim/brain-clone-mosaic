@@ -427,10 +427,12 @@ def simulate_sensitivity_assay(mosaic_input, downsample):
         print(f"vals_unc: {vals_unc}")
         if len(vals_unc) > 0:
             entry[20] = sum(vals_unc) / len(vals_unc)
+            wtf = np.mean(vals_unc)
             print(f"raw: background AAF (w/in 50nts): {entry[20]}")
+            print(f"calculated with np.mean: {wtf}")
             #entry[21] = math.sqrt(sum(pow(x-entry[20],2) for x in vals_unc) / (len(vals_unc)-1))
             entry[21] = np.std(vals_unc, ddof=1)
-            print(f"raw: average background AAF (w/in 50nts): {entry[21]}")
+            print(f"raw: std raw background AAF (w/in 50nts): {entry[21]}")
 
         if len(vals_c) > 0:
             entry[29] = sum(vals_c) / len(vals_c)
