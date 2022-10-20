@@ -673,28 +673,52 @@ sub filter{
 			}
 		}
 
-		# filter 50 nt corrected 
+
+		# keep allele corrected and 50nt corrected consistent
 		for my $line (@corrected_50nt_above_cutoff){
 			my @temp = split("\t", $line);
-
-			if ($temp[10] < $qc_pass_filter){
+			if (exists $ac_above_cutoff_below_qc_filter{$temp[37]}){
 				push (@corrected_50nt_above_cutoff_below_qc_filter, $line);
 			}else{
 				push (@corrected_50nt_above_cutoff_above_qc_filter, $line);
 			}
+
 		}
 
-		# filter 50 nt uncorrected
+
+		# keep allele uncorrected and 50nt uncorrected consistent
 		for my $line (@uncorrected_50nt_above_cutoff){
 			my @temp = split("\t", $line);
-
-			if ($temp[10] < $qc_pass_filter){
+		
+			if (exists $auc_above_cutoff_below_qc_filter{$temp[37]}){
 				push (@uncorrected_50nt_above_cutoff_below_qc_filter, $line);
 			}else{
-				push (@uncorrected_50nt_above_cutoff_above_qc_filter, $line);
+				push(@uncorrected_50nt_above_cutoff_above_qc_filter, $line);
 			}
-			
+
 		}
+
+		# TODO: not sure if this is still needed. Commenting out.
+		# filter 50 nt corrected 
+		#for my $line (@corrected_50nt_above_cutoff){
+		#	my @temp = split("\t", $line);
+		#
+		#	if ($temp[10] < $qc_pass_filter){
+		#		push (@corrected_50nt_above_cutoff_below_qc_filter, $line);
+		#	}else{
+		#		push (@corrected_50nt_above_cutoff_above_qc_filter, $line);
+		#	}
+		#}
+		# filter 50 nt uncorrected
+		#for my $line (@uncorrected_50nt_above_cutoff){
+		#	my @temp = split("\t", $line);
+		#
+		#	if ($temp[10] < $qc_pass_filter){
+		#		push (@uncorrected_50nt_above_cutoff_below_qc_filter, $line);
+		#	}else{
+		#		push (@uncorrected_50nt_above_cutoff_above_qc_filter, $line);
+		#	}	
+		#}
 
 		#TODO: ?? need to check if it is removed in one dataset it needs to be removed in another?
  
@@ -817,36 +841,37 @@ sub remove_data_if_ref_lt_alt{
 
 	# run through for array ones
 	my (@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, @corrected_50nt_above_cutoff_above_qc_ref_lt_alt, @uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, @uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, @ac_above_cutoff_above_qc_ref_gt_alt, @ac_above_cutoff_above_qc_ref_lt_alt, @auc_above_cutoff_above_qc_ref_gt_alt, @auc_above_cutoff_above_qc_ref_lt_alt);
+	my (%ac_above_cutoff_above_qc_ref_lt_alt_just_primers, %auc_above_cutoff_above_qc_ref_lt_alt_just_primers);
 
+	# TODO: not sure if this is still needed. Commenting out.
 	# corrected 50nt 
-	for my $line (@corrected_50nt_above_cutoff_above_qc_filter){
-		my @temp = split("\t", $line);
-		my $AD = $temp[6];
+	# for my $line (@corrected_50nt_above_cutoff_above_qc_filter){
+	# 	my @temp = split("\t", $line);
+	# 	my $AD = $temp[6];
 
-		my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
-		my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
+	# 	my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
+	# 	my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
 
-		if ($ref_count > $alt_count){
-			push (@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
-		}else{
-			push (@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
-		}
-	}
+	# 	if ($ref_count > $alt_count){
+	# 		push (@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
+	# 	}else{
+	# 		push (@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
+	# 	}
+	# }
+	# # uncorrected 50 nt
+	# for my $line (@uncorrected_50nt_above_cutoff_above_qc_filter){
+	# 	my @temp = split("\t", $line);
+	# 	my $AD = $temp[6];
 
-	# uncorrected 50 nt
-	for my $line (@uncorrected_50nt_above_cutoff_above_qc_filter){
-		my @temp = split("\t", $line);
-		my $AD = $temp[6];
+	# 	my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
+	# 	my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
 
-		my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
-		my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
-
-		if ($ref_count > $alt_count){
-			push (@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
-		}else{
-			push (@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
-		}
-	}
+	# 	if ($ref_count > $alt_count){
+	# 		push (@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
+	# 	}else{
+	# 		push (@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
+	# 	}
+	# }
 
 	# run through for hash ones
 
@@ -864,6 +889,7 @@ sub remove_data_if_ref_lt_alt{
 			push(@ac_above_cutoff_above_qc_ref_gt_alt, $line);
 		}else{
 			push(@ac_above_cutoff_above_qc_ref_lt_alt, $line);
+			$ac_above_cutoff_above_qc_ref_lt_alt_just_primers{$key} = 1;
 		}
 	}
 
@@ -881,7 +907,30 @@ sub remove_data_if_ref_lt_alt{
 			push(@auc_above_cutoff_above_qc_ref_gt_alt, $line);
 		}else{
 			push(@auc_above_cutoff_above_qc_ref_lt_alt, $line);
+			$auc_above_cutoff_above_qc_ref_lt_alt_just_primers{$key} = 1;
 		}
+	}
+
+	# keep allele corrected and 50nt consistent
+	for my $line (@corrected_50nt_above_cutoff_above_qc_filter){
+	 	my @temp = split("\t", $line);
+
+	 	if (exists $ac_above_cutoff_above_qc_ref_lt_alt_just_primers{$temp[37]}){
+	 		push (@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
+	 	}else{
+	 		push (@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
+	 	}
+	 }
+
+	# keep allele uncorrected and 50nt consistent
+	for my $line (@uncorrected_50nt_above_cutoff_above_qc_filter){
+	 	my @temp = split("\t", $line);
+
+	 	if (exists $auc_above_cutoff_above_qc_ref_lt_alt_just_primers{$temp[37]}){
+	 		push (@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
+	 	}else{
+	 		push (@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
+	 	}
 	}
 
 	return (\@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, \@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, \@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, \@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, \@ac_above_cutoff_above_qc_ref_gt_alt, \@ac_above_cutoff_above_qc_ref_lt_alt, \@auc_above_cutoff_above_qc_ref_gt_alt, \@auc_above_cutoff_above_qc_ref_lt_alt);
