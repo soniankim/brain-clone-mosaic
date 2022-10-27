@@ -5,22 +5,23 @@ use warnings;
 use Getopt::Long;	# for script arguments for file input passing
 use Pod::Usage;   	# for usage statement
 
-my ($help, $oligo_target_file, $allele_corrected, $allele_uncorrected, $corrected_50nt, $uncorrected_50nt, $output_dir, $sample_name, $cutoff, $qc_pass_filter, $remove_ref_lt_alt, $debug);
+my ($help, $oligo_target_file, $allele_corrected, $allele_uncorrected, $corrected_50nt, $uncorrected_50nt, $output_dir, $sample_name, $cutoff, $qc_pass_filter, $remove_ref_lt_alt, $only_need_primer_in_raw_data, $debug);
 
 # command line arg handling
 GetOptions(
-        'help|h'               => \$help,
-        'oligo_target_file=s'  => \$oligo_target_file,
-        'allele_corrected=s'   => \$allele_corrected,
-        'allele_uncorrected=s' => \$allele_uncorrected,
-        'corrected_50nt=s'     => \$corrected_50nt,
-        'uncorrected_50nt=s'   => \$uncorrected_50nt,
-        'output_dir=s'         => \$output_dir,
-        'sample_name=s'        => \$sample_name,
-        'cutoff=i'             => \$cutoff,
-        'qc_pass_filter=f'     => \$qc_pass_filter,
-        'remove_ref_lt_alt'    => \$remove_ref_lt_alt,
-        'debug'                => \$debug
+        'help|h'               			=> \$help,
+        'oligo_target_file=s'  			=> \$oligo_target_file,
+        'allele_corrected=s'   			=> \$allele_corrected,
+        'allele_uncorrected=s' 			=> \$allele_uncorrected,
+        'corrected_50nt=s'     			=> \$corrected_50nt,
+        'uncorrected_50nt=s'   			=> \$uncorrected_50nt,
+        'output_dir=s'         			=> \$output_dir,
+        'sample_name=s'       			=> \$sample_name,
+        'cutoff=i'             			=> \$cutoff,
+        'qc_pass_filter=f'     			=> \$qc_pass_filter,
+        'remove_ref_lt_alt'    			=> \$remove_ref_lt_alt,
+		'only_need_primer_in_raw_data'	=> \$only_need_primer_in_raw_data,
+        'debug'                			=> \$debug
 );
 
 # debug flag will print out lots of info so you can verify the script is doing what we expect it to do
@@ -29,7 +30,9 @@ $debug = 0 unless ($debug);
 # if the user running the script uses the help option or forgets to
 # pass files, print the usage statement
 pod2usage(-verbose =>1) if $help;
-pod2usage("$0: Not enough files provided.\n") unless $oligo_target_file && $allele_corrected && $allele_uncorrected && $output_dir && $sample_name && $corrected_50nt && $uncorrected_50nt;
+pod2usage("$0: Not enough files provided.\n") unless $oligo_target_file && $allele_corrected && 
+													 $allele_uncorrected && $output_dir && $sample_name 
+													 && $corrected_50nt && $uncorrected_50nt;
 
 # unless you gave a cutoff, we'll use 0
 $cutoff = 0 unless $cutoff;
@@ -39,6 +42,9 @@ $qc_pass_filter = .7 unless $qc_pass_filter;
 
 # unless you use remove_ref_lt_alt (remove data if reference counts are less than alt counts), it'll be set to 0 (or false)
 $remove_ref_lt_alt = 0 unless $remove_ref_lt_alt;
+
+# unless you set only_need_primer_in_raw_data (remove data )
+$only_need_primer_in_raw_data = 0 unless $only_need_primer_in_raw_data;
 
 my $pass_dir = $output_dir . "/pass";
 my $fail_dir = $output_dir . "/fail";
@@ -102,7 +108,7 @@ $ac_above_cutoff_above_qc_filter_ref, $ac_above_cutoff_below_qc_filter_ref, $auc
 $corrected_50nt_above_cutoff_above_qc_filter_ref, $corrected_50nt_above_cutoff_below_qc_filter_ref, $uncorrected_50nt_above_cutoff_above_qc_filter_ref, $uncorrected_50nt_above_cutoff_below_qc_filter_ref, 
 $corrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref, $corrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref,
 $uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $ac_above_cutoff_above_qc_ref_gt_alt_ref, $ac_above_cutoff_above_qc_ref_lt_alt_ref,
-$auc_above_cutoff_above_qc_ref_gt_alt_ref, $auc_above_cutoff_above_qc_ref_lt_alt_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt_pass, \@uncorrected_50nt_pass, $cutoff, $qc_pass_filter, $remove_ref_lt_alt, $debug);
+$auc_above_cutoff_above_qc_ref_gt_alt_ref, $auc_above_cutoff_above_qc_ref_lt_alt_ref) = filter(\@allele_corrected_pass, \@allele_uncorrected_pass, \@corrected_50nt_pass, \@uncorrected_50nt_pass, $cutoff, $qc_pass_filter, $remove_ref_lt_alt, $only_need_primer_in_raw_data, $debug);
 
 %ac_above_cutoff = %$ac_above_cutoff_ref; %ac_below_cutoff = %$ac_below_cutoff_ref;
 %auc_above_cutoff = %$auc_above_cutoff_ref; %auc_below_cutoff = %$auc_below_cutoff_ref;
@@ -291,8 +297,11 @@ sub remove_data_if_alt_allele_check_failed{
 	my ($allele_uncorrected_pass_ref, $allele_uncorrected_fail_ref) = alt_allele_check(\%oligo_target, \@allele_uncorrected, $debug);
 	@allele_uncorrected_pass = @$allele_uncorrected_pass_ref; @allele_uncorrected_fail = @$allele_uncorrected_fail_ref;
 
-	print "\n\t* \"Passing\" data includes:\n\t\t- matching chr + loci + primer in the the design file with either a reference match,\n\t\t- the expected primary alt allele,\n\t\t- the expected alt allele in a non-primary position,\n\t\t- and alternative alleles that are not the expected one.\n\tFor the last two cases, modification of data will be done.\n";
-	print "\n\t* \"Failing\" data includes:\n\t\t- no matching chr + loci + primer in the design file,\n\t\t- or wrong reference for a chr + loci + primer found in the design file.\n\n";
+	print "\n\t* \"Passing\" data includes:\n\t\t- matching chr + loci + primer in the the design file with either a reference match,
+	\n\t\t- the expected primary alt allele,\n\t\t- the expected alt allele in a non-primary position,
+	\n\t\t- and alternative alleles that are not the expected one.\n\tFor the last two cases, modification of data will be done.\n";
+	print "\n\t* \"Failing\" data includes:\n\t\t- no matching chr + loci + primer in the design file,
+	\n\t\t- or wrong reference for a chr + loci + primer found in the design file.\n\n";
 
 	print "Running function to collate the list of primers that conflict that the design file, for both allele corrected and allele uncorrected.\n";
 	my ($collated_failed_primers_ref) = find_primers_that_conflict_with_design_file(\@allele_corrected_fail, \@allele_uncorrected_fail, $debug);
@@ -734,7 +743,8 @@ sub filter{
 	# 50ntErrC, 50ntNoC, alleleErrC, alleleNoC
 	my ($corrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref, 
 	$corrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref, 
-	$uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $ac_above_cutoff_above_qc_ref_gt_alt_ref, $ac_above_cutoff_above_qc_ref_lt_alt_ref, $auc_above_cutoff_above_qc_ref_gt_alt_ref, $auc_above_cutoff_above_qc_ref_lt_alt_ref) = remove_data_if_ref_lt_alt(\@corrected_50nt_above_cutoff_above_qc_filter, \@uncorrected_50nt_above_cutoff_above_qc_filter, \%ac_above_cutoff_above_qc_filter, \%auc_above_cutoff_above_qc_filter, $print_if_debug) if $remove_ref_lt_alt;
+	$uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $ac_above_cutoff_above_qc_ref_gt_alt_ref, $ac_above_cutoff_above_qc_ref_lt_alt_ref, $auc_above_cutoff_above_qc_ref_gt_alt_ref, $auc_above_cutoff_above_qc_ref_lt_alt_ref) = remove_data_if_ref_lt_alt(\@corrected_50nt_above_cutoff_above_qc_filter, \@uncorrected_50nt_above_cutoff_above_qc_filter, \%ac_above_cutoff_above_qc_filter, \%auc_above_cutoff_above_qc_filter, $only_need_primer_in_raw_data, $print_if_debug) if $remove_ref_lt_alt;
+
 
 	my @corrected_50nt_above_cutoff_above_qc_ref_gt_alt = @$corrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref; 
 	my @corrected_50nt_above_cutoff_above_qc_ref_lt_alt = @$corrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref;
@@ -831,7 +841,7 @@ sub filter{
 
 sub remove_data_if_ref_lt_alt{
 	# de-reference the references that were passed to the subroutine
-	my ($corrected_50nt_above_cutoff_above_qc_filter_ref, $uncorrected_50nt_above_cutoff_above_qc_filter_ref, $ac_above_cutoff_above_qc_filter_ref, $auc_above_cutoff_above_qc_filter_ref, $debug) =@_;
+	my ($corrected_50nt_above_cutoff_above_qc_filter_ref, $uncorrected_50nt_above_cutoff_above_qc_filter_ref, $ac_above_cutoff_above_qc_filter_ref, $auc_above_cutoff_above_qc_filter_ref, $only_need_primer_in_raw_data, $debug) =@_;
 
 	# de-reference the references that were passed to the subroutine
 	my @corrected_50nt_above_cutoff_above_qc_filter = @$corrected_50nt_above_cutoff_above_qc_filter_ref;
@@ -911,6 +921,15 @@ sub remove_data_if_ref_lt_alt{
 		}
 	}
 
+	# if only_need_primer_in_raw_data, check for missing data in raw - if so, remove from EC
+	
+
+
+	# else, remove data if it is missing in either EC or AUC
+
+
+
+
 	# keep allele corrected and 50nt consistent
 	for my $line (@corrected_50nt_above_cutoff_above_qc_filter){
 	 	my @temp = split("\t", $line);
@@ -933,6 +952,10 @@ sub remove_data_if_ref_lt_alt{
 	 	}
 	}
 
+
+	# make sure that if data is missing in uncorrected, it is removed in corrected
+
+
 	return (\@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, \@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, \@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, \@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, \@ac_above_cutoff_above_qc_ref_gt_alt, \@ac_above_cutoff_above_qc_ref_lt_alt, \@auc_above_cutoff_above_qc_ref_gt_alt, \@auc_above_cutoff_above_qc_ref_lt_alt);
 }
 
@@ -952,16 +975,18 @@ Script to verify detected primary alternate allele matches that of the oligo tar
 verify_primary_alt_allele.pl [options]
 
   Options:
-  	-h|help                 brief help message
-  	-oligo_target_file      file containing list of oligos targeting which sites, tab-delimited
-  	-allele_corrected       allele file (error corrected), tab-delimited
-  	-allele_uncorrected     allele file (not error corrected), tab-delimited
-	-corrected_50nt         50nt file (error corrected), tab-delimited
-	-uncorrected_50nt       50nt file (not error corrected), tab-delimited
-	-output_dir             folder to save output files
-  	-sample_name            sample or chip name, which is used as a prefix in the output filenames
-	-cutoff                 minimum read depth to take (default: 0)
-	-qc_pass_filter         minimum fraction of passable reads from total reads (default: .7)
-	-remove_ref_lt_alt      remove data where the reference counts are less than alt counts
-  	-debug                  turn on debugging output
+  	-h|help                 		brief help message
+  	-oligo_target_file      		file containing list of oligos targeting which sites, tab-delimited
+  	-allele_corrected       		allele file (error corrected), tab-delimited
+  	-allele_uncorrected     		allele file (not error corrected), tab-delimited
+	-corrected_50nt         		50nt file (error corrected), tab-delimited
+	-uncorrected_50nt       		50nt file (not error corrected), tab-delimited
+	-output_dir             		folder to save output files
+  	-sample_name            		sample or chip name, which is used as a prefix in the output filenames
+	-cutoff                			minimum read depth to take (default: 0)
+	-qc_pass_filter         		minimum fraction of passable reads from total reads (default: .7)
+	-remove_ref_lt_alt      		remove data where the reference counts are less than alt counts
+	-only_need_primer_in_raw_data		if toggled, data will be retained even if that primer is found only in raw data.
+						by default, primer must be found in allele corrected and uncorrected to be kept.
+  	-debug                  		turn on debugging output
 =cut
