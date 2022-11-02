@@ -54,8 +54,8 @@ if (-d $output_dir){
 	die "Please select a new output directory name. $output_dir already exists.\n";
 }else{
 	mkdir $output_dir unless -d $output_dir;
-	mkdir $pass_dir unless -d $pass_dir;
-	mkdir $fail_dir unless -d $fail_dir;
+	mkdir $pass_dir   unless -d $pass_dir;
+	mkdir $fail_dir   unless -d $fail_dir;
 }
 
 
@@ -528,7 +528,7 @@ sub remove_lines_by_specified_data{
 # if amplicon is thrown out, discard 50nt entries (NOT VARIANT)
 
 sub filter{
-	my ($allele_corrected_pass_ref, $allele_uncorrected_pass_ref, $corrected_50nt_ref, $uncorrected_50nt_ref, $cutoff, $qc_pass_filter, $remove_ref_lt_alt, $print_if_debug) = @_;
+	my ($allele_corrected_pass_ref, $allele_uncorrected_pass_ref, $corrected_50nt_ref, $uncorrected_50nt_ref, $cutoff, $qc_pass_filter, $remove_ref_lt_alt, $only_need_primer_in_raw_data, $print_if_debug) = @_;
 
 	# de-reference the references that were passed to the subroutine
 	my @allele_corrected_pass = @$allele_corrected_pass_ref;
@@ -536,76 +536,85 @@ sub filter{
 	my @corrected_50nt = @$corrected_50nt_ref;
 	my @uncorrected_50nt = @$uncorrected_50nt_ref;
 	
-	# process allele corrected "pass" data and segment data into >= DP cutoff, and < DP cutoff
-	my %ac_above_cutoff; my %ac_below_cutoff;
+	# process allele uncorrected "pass" data and segment data into >= DP cutoff, and < DP cutoff
+	my %auc_above_cutoff; my %auc_below_cutoff;
 
 	# $temp_line[8] - total DP
 	# $temp_line[37] - primer ID (three digit code)
-	foreach my $line (@allele_corrected_pass){
+	foreach my $line (@allele_uncorrected_pass){
 		my @temp_line = split("\t", $line);
 		if ($temp_line[8] >= $cutoff){
-			$ac_above_cutoff{$temp_line[37]}=$line;
+			$auc_above_cutoff{$temp_line[37]}=$line;
 		}elsif($temp_line[8] < $cutoff){
-			$ac_below_cutoff{$temp_line[37]}=$line;
+			$auc_below_cutoff{$temp_line[37]}=$line;
 		}else{
 			print "Error with allele corrected pass data!:\n$line\n";
 		}
 	}
 
-	# go through allele uncorrected pass
-	# for the discarded ones in allele corrected pass -> discard from allele uncorrected too
-	# if any discarded from allele uncorrected (<cutoff) -> discard from allele corrected, too
-	# then for the discarded ones, remove 50nt as well
+	# go through allele corrected pass
+	# 	with default option
+	# 		for the discarded ones in allele corrected pass -> discard from allele uncorrected too
+	# 		if any discarded from allele uncorrected (<cutoff) -> discard from allele corrected, too
+	# 		then for the discarded ones, remove 50nt as well
+	#
+	# 	with only_need_primer_in_raw_data option
+	#		for the discarded ones in allele uncorrected pass -> discard from allele corrected pass, too
+	#														  -> discard from both 50nts
+	#		for the discarded ones in allele corrected pass   -> keep in allele uncorrected pass
+	#														  -> discard from 50nt for allele corrected
 
-	my %auc_above_cutoff; my %auc_below_cutoff; my %auc_missing_in_ac;
+	my %ac_above_cutoff; my %ac_below_cutoff; my %ac_missing_in_auc;
 	my %remove_from_50nt_files; # this means the amplicon was < cutoff in at least one of allele corrected/uncorrected
 
-	foreach my $line (@allele_uncorrected_pass){
+	foreach my $line (@allele_corrected_pass){
 		my @temp_line = split("\t", $line);
 		chomp($line);
 		#print "$line\t$temp_line[8]\n" if $print_if_debug;
 
-		# if above cutoff, must check to see if allele_corrected is also above the cutoff for this amplicon
+		# if above cutoff, must check to see if allele_uncorrected is also above the cutoff for this amplicon
 		if ( $temp_line[8]>=$cutoff  ){
-
-			# allele uncorrected above cutoff, allele corrected below cutoff --> DISCARD
-			if ($ac_below_cutoff{$temp_line[37]}){
+  
+			# allele corrected above cutoff, allele uncorrected below cutoff --> DISCARD
+			# TODO: if toggled, keep anyway
+			if ($auc_below_cutoff{$temp_line[37]}){
 				# add to remove_from_50nt_files
 				$remove_from_50nt_files{$temp_line[37]} = 1;
-				$auc_below_cutoff{$temp_line[37]}=$line;
+				$ac_below_cutoff{$temp_line[37]}=$line;
 			# both above cutoff ---> KEEP
-			}elsif($ac_above_cutoff{$temp_line[37]}){
-				$auc_above_cutoff{$temp_line[37]}=$line;
-			# allele uncorrected primer ID is not in allele corrected---> PUT IN SEPARATE BUCKET
+			}elsif($auc_above_cutoff{$temp_line[37]}){
+				$ac_above_cutoff{$temp_line[37]}=$line;
+			# allele corrected primer ID is not in allele uncorrected---> PUT IN SEPARATE BUCKET
 			}else{
-				print "\tError in filter function. Missing primer $temp_line[37] for allele corrected\n" unless $ac_above_cutoff{$temp_line[37]} || $ac_below_cutoff{$temp_line[37]};
-				print "Unspecified error in filter function" if $ac_above_cutoff{$temp_line[37]} || $ac_below_cutoff{$temp_line[37]};
-				$auc_missing_in_ac{$temp_line[37]} = $line;
+				print "\tError in filter function. Missing primer $temp_line[37] for allele uncorrected\n" unless $auc_above_cutoff{$temp_line[37]} || $auc_below_cutoff{$temp_line[37]};
+				print "Unspecified error in filter function" if $auc_above_cutoff{$temp_line[37]} || $auc_below_cutoff{$temp_line[37]};
+				$ac_missing_in_auc{$temp_line[37]} = $line;
 				$remove_from_50nt_files{$temp_line[37]} = 1;
 			}
 
-		# allele uncorrected below cutoff:
+		# allele corrected below cutoff:
 		# check to see if allele_corrected is above the cutoff.
 		}else{
 
-			# allele uncorrected below cutoff, allele corrected below cutoff --> DISCARD
-			if ($ac_below_cutoff{$temp_line[37]}){
+			# allele corrected below cutoff, allele uncorrected below cutoff --> DISCARD
+			if ($auc_below_cutoff{$temp_line[37]}){
 				$remove_from_50nt_files{$temp_line[37]} = 1;
-				$auc_below_cutoff{$temp_line[37]}=$line;
-			# allele uncorrected below, allele corrected above cutoff ---> DISCARD
-			}elsif($ac_above_cutoff{$temp_line[37]}){
+				$ac_below_cutoff{$temp_line[37]}=$line;
+			# allele corrected below, allele uncorrected above cutoff ---> DISCARD
+			# TODO: keep anyway
+			}elsif($auc_above_cutoff{$temp_line[37]}){
 				$remove_from_50nt_files{$temp_line[37]} = 1;
 				# remove from above cutoff array for allele corrected, as the allele uncorrected is below
-				my $to_keep = $ac_above_cutoff{$temp_line[37]};
-				delete $ac_above_cutoff{$temp_line[37]};
-				$ac_below_cutoff{$temp_line[37]} = $to_keep;
-				$auc_below_cutoff{$temp_line[37]}=$line;
+				my $to_keep = $auc_above_cutoff{$temp_line[37]};
+				delete $auc_above_cutoff{$temp_line[37]};
+				$auc_below_cutoff{$temp_line[37]} = $to_keep;
+				$ac_below_cutoff{$temp_line[37]}=$line;
 
-			# allele uncorrected primer ID is not in allele corrected---> PUT IN SEPARATE BUCKET
+			# allele corrected primer ID is not in allele uncorrected---> PUT IN SEPARATE BUCKET
 			}else{
-				print "\tError in filter function. Missing primer $temp_line[37] for allele corrected\n" unless $ac_below_cutoff{$temp_line[37]} || $ac_above_cutoff{$temp_line[37]};
-				print "Unspecified error in filter function" if $ac_below_cutoff{$temp_line[37]} || $ac_above_cutoff{$temp_line[37]};
-				$auc_missing_in_ac{$temp_line[37]} = $line;
+				print "\tError in filter function. Missing primer $temp_line[37] for allele uncorrected\n" unless $auc_below_cutoff{$temp_line[37]} || $auc_above_cutoff{$temp_line[37]};
+				print "Unspecified error in filter function" if $auc_below_cutoff{$temp_line[37]} || $auc_above_cutoff{$temp_line[37]};
+				$ac_missing_in_auc{$temp_line[37]} = $line;
 				$remove_from_50nt_files{$temp_line[37]} = 1;
 			}
 
@@ -613,19 +622,24 @@ sub filter{
 
 	}
 
-	# check for primers that are in allele corrected data but not in allele uncorrected
+	# check for primers that are in allele uncorrected data but not in allele corrected
 	# shunt these to a bucket and print 'em out later
-	my %ac_missing_in_auc;
-	for my $primer (sort keys %ac_below_cutoff){
-		if (! $auc_below_cutoff{$primer}){
-			print "\tError in filter function. Missing primer $primer for allele uncorrected\n";
-			$ac_missing_in_auc{$primer} = $ac_below_cutoff{$primer};
-			delete $ac_below_cutoff{$primer};
+	# TODO: this won't be run when the toggle is on.
+	my %auc_missing_in_ac;
+	for my $line (@allele_uncorrected_pass){
+		my @temp_line = split("\t", $line);
+		my $primer = $temp_line[37];
+		if (! $ac_above_cutoff{$primer}){
+			print "\tError in filter function. Missing primer $primer for allele corrected\n";
+			$auc_missing_in_ac{$primer} = $line;
+			delete $auc_above_cutoff{$primer};
+			#$auc_below_cutoff{$primer} = $auc_missing_in_ac{$primer};
 			$remove_from_50nt_files{$primer} = 1;
 		}
 	}	 
 
 	# remove the irrelevant lines (those corresponding to amplicons < the DP cutoff) from 50nt files
+	# TODO: need to process 50nt separately for each corr/uncorr if toggle is on
 	my @corrected_50nt_above_cutoff; my @corrected_50nt_below_cutoff;
 	my @uncorrected_50nt_above_cutoff; my @uncorrected_50nt_below_cutoff;
 	for my $c_50nt (@corrected_50nt){
@@ -646,25 +660,19 @@ sub filter{
 		}
 	}
 
-	#TODO:
-	# filter on quality (this is the first field prior to the placeholders)
-	# quality threshold of 75% can be used
-	# need to add in parameter for command line, pass that parameter to this function
-	# send lower quality data to its own file
-
-	# put allele corrected & allele uncorrected into arrays from hashes?
-
 	my (%ac_above_cutoff_above_qc_filter, %ac_above_cutoff_below_qc_filter, %auc_above_cutoff_above_qc_filter, %auc_above_cutoff_below_qc_filter);
 	my (@corrected_50nt_above_cutoff_above_qc_filter, @corrected_50nt_above_cutoff_below_qc_filter, @uncorrected_50nt_above_cutoff_above_qc_filter, @uncorrected_50nt_above_cutoff_below_qc_filter);
 
 	if ($qc_pass_filter){
 		# alelle corrected
+		my %remove_from_auc_files;
 		foreach my $key (keys %ac_above_cutoff){
 			my $line = $ac_above_cutoff{$key};
 			my @temp = split("\t", $line);
 
 			if ($temp[10] < $qc_pass_filter){
 				$ac_above_cutoff_below_qc_filter{$temp[37]} = $line;
+				$remove_from_auc_files{$temp[37]} = 1;
 			}else{
 				$ac_above_cutoff_above_qc_filter{$temp[37]} = $line;
 			}
@@ -675,13 +683,19 @@ sub filter{
 			my $line = $auc_above_cutoff{$key};
 			my @temp = split("\t", $line);
 
-			if ($temp[10] < $qc_pass_filter){
+			if (exists $remove_from_auc_files{$temp[37]}){
 				$auc_above_cutoff_below_qc_filter{$temp[37]} = $line;
+			}elsif($temp[10] < $qc_pass_filter){
+				$auc_above_cutoff_below_qc_filter{$temp[37]} = $line;
+				delete $ac_above_cutoff_above_qc_filter{$temp[37]}; 
+				$ac_above_cutoff_below_qc_filter{$temp[37]} = $line;
+				# remove from ac above cutoff if it exists
 			}else{
 				$auc_above_cutoff_above_qc_filter{$temp[37]} = $line;
 			}
 		}
 
+		#TODO: handle differently if "missing in allele raw only" toggled
 
 		# keep allele corrected and 50nt corrected consistent
 		for my $line (@corrected_50nt_above_cutoff){
@@ -694,7 +708,6 @@ sub filter{
 
 		}
 
-
 		# keep allele uncorrected and 50nt uncorrected consistent
 		for my $line (@uncorrected_50nt_above_cutoff){
 			my @temp = split("\t", $line);
@@ -706,30 +719,6 @@ sub filter{
 			}
 
 		}
-
-		# TODO: not sure if this is still needed. Commenting out.
-		# filter 50 nt corrected 
-		#for my $line (@corrected_50nt_above_cutoff){
-		#	my @temp = split("\t", $line);
-		#
-		#	if ($temp[10] < $qc_pass_filter){
-		#		push (@corrected_50nt_above_cutoff_below_qc_filter, $line);
-		#	}else{
-		#		push (@corrected_50nt_above_cutoff_above_qc_filter, $line);
-		#	}
-		#}
-		# filter 50 nt uncorrected
-		#for my $line (@uncorrected_50nt_above_cutoff){
-		#	my @temp = split("\t", $line);
-		#
-		#	if ($temp[10] < $qc_pass_filter){
-		#		push (@uncorrected_50nt_above_cutoff_below_qc_filter, $line);
-		#	}else{
-		#		push (@uncorrected_50nt_above_cutoff_above_qc_filter, $line);
-		#	}	
-		#}
-
-		#TODO: ?? need to check if it is removed in one dataset it needs to be removed in another?
  
 	}else{
 		print "\tError in filter function. Minimum QC Pass Fraction is unset."; # should never get this error
@@ -745,7 +734,6 @@ sub filter{
 	$corrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref, 
 	$uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref, $ac_above_cutoff_above_qc_ref_gt_alt_ref, $ac_above_cutoff_above_qc_ref_lt_alt_ref, $auc_above_cutoff_above_qc_ref_gt_alt_ref, $auc_above_cutoff_above_qc_ref_lt_alt_ref) = remove_data_if_ref_lt_alt(\@corrected_50nt_above_cutoff_above_qc_filter, \@uncorrected_50nt_above_cutoff_above_qc_filter, \%ac_above_cutoff_above_qc_filter, \%auc_above_cutoff_above_qc_filter, $only_need_primer_in_raw_data, $print_if_debug) if $remove_ref_lt_alt;
 
-
 	my @corrected_50nt_above_cutoff_above_qc_ref_gt_alt = @$corrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref; 
 	my @corrected_50nt_above_cutoff_above_qc_ref_lt_alt = @$corrected_50nt_above_cutoff_above_qc_ref_lt_alt_ref;
 	my @uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt = @$uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt_ref; 
@@ -758,7 +746,7 @@ sub filter{
 	#TODO clean up below:
 	# table to check logic, make sure the numbers make sense
 	my $allele_corrected_size = $#allele_corrected_pass + 1; my $allele_corrected_pass_dp_above_cutoff_size = keys(%ac_above_cutoff); my $allele_corrected_pass_dp_below_cutoff_size = keys(%ac_below_cutoff); my $allele_corrected_pass_not_in_allele_uncorrected = keys(%ac_missing_in_auc);
-	my $ac_above_cutoff_above_qc_filter_size = keys(%auc_above_cutoff_above_qc_filter); my $ac_above_cutoff_below_qc_filter_size = keys(%ac_above_cutoff_below_qc_filter);
+	my $ac_above_cutoff_above_qc_filter_size = keys(%ac_above_cutoff_above_qc_filter); my $ac_above_cutoff_below_qc_filter_size = keys(%ac_above_cutoff_below_qc_filter);
 	my $ac_above_cutoff_above_qc_ref_gt_alt_counts = $#ac_above_cutoff_above_qc_ref_gt_alt +1;
 	my $ac_above_cutoff_above_qc_ref_lt_alt_counts = $#ac_above_cutoff_above_qc_ref_lt_alt +1;
 
@@ -850,38 +838,7 @@ sub remove_data_if_ref_lt_alt{
 	my %auc_above_cutoff_above_qc_filter = %$auc_above_cutoff_above_qc_filter_ref;
 
 	# run through for array ones
-	my (@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, @corrected_50nt_above_cutoff_above_qc_ref_lt_alt, @uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, @uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, @ac_above_cutoff_above_qc_ref_gt_alt, @ac_above_cutoff_above_qc_ref_lt_alt, @auc_above_cutoff_above_qc_ref_gt_alt, @auc_above_cutoff_above_qc_ref_lt_alt);
-	my (%ac_above_cutoff_above_qc_ref_lt_alt_just_primers, %auc_above_cutoff_above_qc_ref_lt_alt_just_primers);
-
-	# TODO: not sure if this is still needed. Commenting out.
-	# corrected 50nt 
-	# for my $line (@corrected_50nt_above_cutoff_above_qc_filter){
-	# 	my @temp = split("\t", $line);
-	# 	my $AD = $temp[6];
-
-	# 	my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
-	# 	my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
-
-	# 	if ($ref_count > $alt_count){
-	# 		push (@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
-	# 	}else{
-	# 		push (@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
-	# 	}
-	# }
-	# # uncorrected 50 nt
-	# for my $line (@uncorrected_50nt_above_cutoff_above_qc_filter){
-	# 	my @temp = split("\t", $line);
-	# 	my $AD = $temp[6];
-
-	# 	my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
-	# 	my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
-
-	# 	if ($ref_count > $alt_count){
-	# 		push (@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
-	# 	}else{
-	# 		push (@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
-	# 	}
-	# }
+	my (@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, @corrected_50nt_above_cutoff_above_qc_ref_lt_alt, @uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, @uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, %ac_above_cutoff_above_qc_ref_gt_alt, %ac_above_cutoff_above_qc_ref_lt_alt, %auc_above_cutoff_above_qc_ref_gt_alt, %auc_above_cutoff_above_qc_ref_lt_alt);
 
 	# run through for hash ones
 
@@ -895,11 +852,10 @@ sub remove_data_if_ref_lt_alt{
 		my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
 		my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
 
-		if ($ref_count > $alt_count){
-			push(@ac_above_cutoff_above_qc_ref_gt_alt, $line);
+		if($ref_count > $alt_count){
+			$ac_above_cutoff_above_qc_ref_gt_alt{$key} = $line;
 		}else{
-			push(@ac_above_cutoff_above_qc_ref_lt_alt, $line);
-			$ac_above_cutoff_above_qc_ref_lt_alt_just_primers{$key} = 1;
+			$ac_above_cutoff_above_qc_ref_lt_alt{$key} = $line;
 		}
 	}
 
@@ -913,28 +869,31 @@ sub remove_data_if_ref_lt_alt{
 		my $ref_count = $1 if $AD =~m/AD=(\d*)\,/ ;
 		my $alt_count = $1 if $AD =~m/AD=\d*\,(\d*)/;
 
-		if ($ref_count > $alt_count){
-			push(@auc_above_cutoff_above_qc_ref_gt_alt, $line);
+		if($ac_above_cutoff_above_qc_ref_lt_alt{$key}){
+			$auc_above_cutoff_above_qc_ref_lt_alt{$key} = $line;
+		}elsif($ref_count > $alt_count){
+			$auc_above_cutoff_above_qc_ref_gt_alt{$key} = $line;
 		}else{
-			push(@auc_above_cutoff_above_qc_ref_lt_alt, $line);
-			$auc_above_cutoff_above_qc_ref_lt_alt_just_primers{$key} = 1;
+			$auc_above_cutoff_above_qc_ref_lt_alt{$key} = $line;
+
+			delete $ac_above_cutoff_above_qc_ref_gt_alt{$temp[37]};
+			$ac_above_cutoff_above_qc_ref_lt_alt{$temp[37]} = $line;
+
 		}
 	}
 
-	# if only_need_primer_in_raw_data, check for missing data in raw - if so, remove from EC
-	
+	# keep allele corrected and uncorrected consistent (assuming no toggle for only_need_primer_in_raw_data)
 
 
-	# else, remove data if it is missing in either EC or AUC
 
-
+	# TODO: if only_need_primer_in_raw_data, check for missing data in raw - if so, remove from EC
 
 
 	# keep allele corrected and 50nt consistent
 	for my $line (@corrected_50nt_above_cutoff_above_qc_filter){
 	 	my @temp = split("\t", $line);
 
-	 	if (exists $ac_above_cutoff_above_qc_ref_lt_alt_just_primers{$temp[37]}){
+	 	if (exists $ac_above_cutoff_above_qc_ref_lt_alt{$temp[37]}){
 	 		push (@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
 	 	}else{
 	 		push (@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
@@ -945,7 +904,7 @@ sub remove_data_if_ref_lt_alt{
 	for my $line (@uncorrected_50nt_above_cutoff_above_qc_filter){
 	 	my @temp = split("\t", $line);
 
-	 	if (exists $auc_above_cutoff_above_qc_ref_lt_alt_just_primers{$temp[37]}){
+	 	if (exists $auc_above_cutoff_above_qc_ref_lt_alt{$temp[37]}){
 	 		push (@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, $line);
 	 	}else{
 	 		push (@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, $line);
@@ -953,8 +912,13 @@ sub remove_data_if_ref_lt_alt{
 	}
 
 
-	# make sure that if data is missing in uncorrected, it is removed in corrected
+	# TODO: make sure that if data is missing in uncorrected, it is removed in corrected
 
+	# switch from hashes to arrays
+	my @ac_above_cutoff_above_qc_ref_gt_alt = sort(values(%ac_above_cutoff_above_qc_ref_gt_alt)); 
+	my @ac_above_cutoff_above_qc_ref_lt_alt = sort(values(%ac_above_cutoff_above_qc_ref_lt_alt));
+	my @auc_above_cutoff_above_qc_ref_gt_alt = sort(values(%auc_above_cutoff_above_qc_ref_gt_alt));
+	my @auc_above_cutoff_above_qc_ref_lt_alt = sort(values(%auc_above_cutoff_above_qc_ref_lt_alt)); 
 
 	return (\@corrected_50nt_above_cutoff_above_qc_ref_gt_alt, \@corrected_50nt_above_cutoff_above_qc_ref_lt_alt, \@uncorrected_50nt_above_cutoff_above_qc_ref_gt_alt, \@uncorrected_50nt_above_cutoff_above_qc_ref_lt_alt, \@ac_above_cutoff_above_qc_ref_gt_alt, \@ac_above_cutoff_above_qc_ref_lt_alt, \@auc_above_cutoff_above_qc_ref_gt_alt, \@auc_above_cutoff_above_qc_ref_lt_alt);
 }
